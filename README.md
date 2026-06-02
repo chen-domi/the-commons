@@ -29,7 +29,7 @@ A shared inventory and resource-sharing platform for Boston College student orga
 
 
 video demo: https://drive.google.com/file/d/1cf_zRnUZIkwKcZUFiVFllER9pG19gPmb/view?usp=sharing
-
+cssr presentation: https://youtu.be/T2Q91d204RY?si=m1IRC1IGEMquzLIa
 
 
 
