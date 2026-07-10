@@ -26,3 +26,7 @@ yarn-error.log*
 # E-board PIN reference — keep private
 eboard-pins.csv
 .claude/settings.local.json
+
+__pycache__/
+*.pyc
+backend/venv/
