@@ -3,5 +3,5 @@ from fastapi import FastAPI
 app = FastAPI()
 
 @app.get("/")
-def read_root():
-    return { "status" : "backend is alive" }
+async def root():
+    return { "message": "Hello World" }
