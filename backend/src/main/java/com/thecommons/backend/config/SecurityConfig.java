@@ -12,9 +12,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
 
-        http.authorizeHttpRequests(authorize -> authorize
-                .requestMatchers(HttpMethod.GET, "/api/inventory").permitAll()
-                .anyRequest().authenticated());
+        http
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/api/inventory"))
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.GET, "/api/inventory").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/inventory").permitAll()
+                        .anyRequest().authenticated());
 
         return http.build();
     }
