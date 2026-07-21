@@ -3,6 +3,7 @@ package com.thecommons.backend.inventory;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import com.thecommons.backend.inventory.dto.CreateInventoryItemRequest;
+import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 
 @Service
 public class InventoryService {
@@ -19,9 +20,7 @@ public class InventoryService {
 
     public InventoryItem createItem(CreateInventoryItemRequest request) {
         if (inventoryRepository.existsByQrCode(request.qrCode())) {
-            throw new IllegalArgumentException(
-                "An inventory item with this QR code already exists"
-            );
+            throw new DuplicateQrCodeException(request.qrCode());
         }
 
         InventoryItem item = new InventoryItem(
@@ -30,8 +29,7 @@ public class InventoryService {
                 request.category(),
                 request.organization(),
                 request.location(),
-                request.quantity()
-        );
+                request.quantity());
 
         item.setLastUsed(request.lastUsed());
         item.setShared(request.shared());
