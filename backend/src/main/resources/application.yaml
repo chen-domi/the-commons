@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: backend
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/the_commons_inventory}
+    username: ${DATABASE_USERNAME:chendomi}
+    password: ${DATABASE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
