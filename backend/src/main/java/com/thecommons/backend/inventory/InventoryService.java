@@ -42,4 +42,9 @@ public class InventoryService {
 
         return inventoryRepository.save(item);
     }
+
+    public void deleteItem(Long id) {
+        InventoryItem item = getItemById(id);
+        inventoryRepository.delete(item);
+    }
 }

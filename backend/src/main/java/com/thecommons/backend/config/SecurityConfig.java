@@ -14,13 +14,11 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/inventory"))
+                        .ignoringRequestMatchers("/api/inventory", "/api/inventory/**"))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/inventory",
-                                "/api/inventory/**")
-                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/inventory").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/inventory/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated());
 
