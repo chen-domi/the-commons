@@ -4,6 +4,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import com.thecommons.backend.inventory.dto.CreateInventoryItemRequest;
 import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
+import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
 
 @Service
 public class InventoryService {
@@ -16,6 +17,11 @@ public class InventoryService {
 
     public List<InventoryItem> getAllItems() {
         return inventoryRepository.findAll();
+    }
+
+    public InventoryItem getItemById(Long id) {
+        return inventoryRepository.findById(id)
+                .orElseThrow(() -> new InventoryItemNotFoundException(id));
     }
 
     public InventoryItem createItem(CreateInventoryItemRequest request) {

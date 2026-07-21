@@ -16,7 +16,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers("/api/inventory"))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/api/inventory").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/inventory",
+                                "/api/inventory/**")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/inventory").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated());
