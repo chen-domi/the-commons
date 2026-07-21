@@ -1,25 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, AlertCircle, Inbox, ChevronRight, Trash2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Plus, X, Inbox, ChevronRight, Trash2 } from 'lucide-react';
+import { localData } from '../lib/localData';
 import { categoryColors } from '../data/inventory';
 import { useAuth } from '../context/AuthContext';
 import { ItemRequest } from '../types';
 import Combobox from './Combobox';
 
 const CATEGORIES = Object.keys(categoryColors);
-
-function rowToRequest(row: any): ItemRequest {
-  return {
-    id:        row.id,
-    org:       row.org,
-    itemName:  row.item_name,
-    category:  row.category,
-    notes:     row.notes,
-    status:    row.status ?? 'pending',
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-  };
-}
 
 // ── Post request modal ─────────────────────────────────────────────────────────
 
@@ -29,7 +16,6 @@ function PostRequestModal({ onClose, onPosted }: { onClose: () => void; onPosted
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const inputClass = 'w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent bg-white';
   const ring = { '--tw-ring-color': '#8B0000' } as React.CSSProperties;
@@ -39,34 +25,9 @@ function PostRequestModal({ onClose, onPosted }: { onClose: () => void; onPosted
     if (!itemName.trim()) return;
     setLoading(true);
 
-    const row = {
-      org:       user?.currentOrg ?? '',
-      item_name: itemName.trim(),
-      category:  category || null,
-      notes:     notes.trim() || null,
-      created_by: user?.id ?? null,
-    };
-
-    const { data, error: err } = await supabase
-      .from('item_requests')
-      .insert(row)
-      .select()
-      .single();
-
-    if (data) {
-      onPosted(rowToRequest(data));
-    } else {
-      // Dev login fallback — no real session
-      if (err) { console.error('Request post failed:', err.message); setError('Failed to post — saved locally.'); }
-      onPosted({
-        id: Date.now(),
-        org: user?.currentOrg ?? '',
-        itemName: itemName.trim(),
-        category: category || null,
-        notes: notes.trim() || null,
-        createdAt: new Date().toISOString(),
-      });
-    }
+    onPosted({ id: Date.now(), org: user?.currentOrg ?? '', itemName: itemName.trim(),
+      category: category || null, notes: notes.trim() || null, createdBy: user?.id,
+      status: 'pending', createdAt: new Date().toISOString() });
   }
 
   return (
@@ -106,12 +67,6 @@ function PostRequestModal({ onClose, onPosted }: { onClose: () => void; onPosted
               placeholder="Dates needed, quantity, any other details…"
               className={`${inputClass} resize-none`} style={ring} />
           </div>
-
-          {error && (
-            <p className="flex items-center gap-1.5 text-xs text-red-600">
-              <AlertCircle size={12} />{error}
-            </p>
-          )}
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose}
@@ -197,23 +152,19 @@ export default function RequestsBoard({ onGoToInventory, onCountChange }: { onGo
   const canPost = !!(user?.isOSIAdmin || user?.organizations.some((o) => o.role === 'eboard'));
 
   useEffect(() => {
-    supabase.from('item_requests').select('*').order('created_at', { ascending: false }).then(({ data }) => {
-      if (data) {
-        setRequests(data.map(rowToRequest));
-        onCountChange?.(data.length);
-      }
-      setLoading(false);
-    });
+    const data = localData.getRequests();
+    setRequests(data);
+    onCountChange?.(data.length);
+    setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handlePosted(r: ItemRequest) {
-    setRequests((prev) => { const next = [r, ...prev]; onCountChange?.(next.length); return next; });
+    setRequests((prev) => { const next = localData.saveRequests([r, ...prev]); onCountChange?.(next.length); return next; });
     setShowPost(false);
   }
 
   async function handleDelete(id: number) {
-    await supabase.from('item_requests').delete().eq('id', id);
-    setRequests((prev) => { const next = prev.filter((r) => r.id !== id); onCountChange?.(next.length); return next; });
+    setRequests((prev) => { const next = localData.saveRequests(prev.filter((r) => r.id !== id)); onCountChange?.(next.length); return next; });
   }
 
   return (

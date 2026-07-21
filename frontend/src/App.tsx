@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Package, Recycle, ArrowLeftRight, Plus, Globe, Inbox, ShieldCheck, Trophy } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { supabase } from './lib/supabase';
+import { localData } from './lib/localData';
 import Header from './components/Header';
 import ImpactDashboard from './components/ImpactDashboard';
 import QRScannerModal from './components/QRScannerModal';
@@ -15,26 +15,6 @@ import AddItemModal from './components/AddItemModal';
 import CheckoutDetailsModal from './components/CheckoutDetailsModal';
 import Leaderboard from './components/Leaderboard';
 import { InventoryItem, ScanResult } from './types';
-
-function rowToItem(row: any): InventoryItem {
-  return {
-    id:              row.id,
-    qrCode:          row.qr_code,
-    name:            row.name,
-    category:        row.category,
-    org:             row.org,
-    location:        row.location,
-    quantity:        row.quantity,
-    lastUsed:        row.last_used,
-    shared:          row.shared,
-    checkedOut:      row.checked_out,
-    createdAt:       row.created_at,
-    borrowCount:     row.borrow_count ?? 0,
-    checkoutPurpose: row.checkout_purpose ?? undefined,
-    checkoutDueDate: row.checkout_due_date ?? undefined,
-    checkedOutBy:    row.checked_out_by ?? undefined,
-  };
-}
 
 type Tab = 'club-inventory' | 'global-inventory' | 'marketplace' | 'wanted' | 'leaderboard';
 
@@ -92,66 +72,35 @@ function MainApp() {
   // Reset search and filters on tab change
   useEffect(() => { setSearchTerm(''); setFilterCategory(''); setFilterOrg(''); }, [activeTab]);
 
-  // Load inventory from Supabase
+  // Local browser data keeps the frontend usable until the Spring API is connected.
   useEffect(() => {
-    supabase.from('inventory').select('*').order('id').then(({ data }) => {
-      if (data) {
-        setItems(data.map(rowToItem));
-        setCheckedOutItems(data.filter((r) => r.checked_out).map((r) => r.qr_code));
-      }
-      setLoadingItems(false);
-    });
+    const data = localData.getInventory();
+    setItems(data);
+    setCheckedOutItems(data.filter((item) => item.checkedOut).map((item) => item.qrCode));
+    setLoadingItems(false);
   }, []);
 
   // Load request count for tab badge
   useEffect(() => {
-    supabase.from('item_requests').select('*', { count: 'exact', head: true }).then(({ count }) => {
-      if (count !== null) setRequestCount(count);
-    });
+    setRequestCount(localData.getRequests().length);
   }, []);
 
   const handleSaveItem = async (saved: InventoryItem) => {
     const isNew = !items.some((i) => i.id === saved.id);
-    const row = {
-      qr_code:    saved.qrCode,
-      name:       saved.name,
-      category:   saved.category,
-      org:        saved.org,
-      location:   saved.location,
-      quantity:   saved.quantity,
-      last_used:  saved.lastUsed,
-      shared:     saved.shared,
-      created_at: saved.createdAt ?? new Date().toISOString(),
-    };
-    if (isNew) {
-      const { data, error } = await supabase
-        .from('inventory')
-        .insert({ ...row, created_by: user?.id ?? null })
-        .select()
-        .single();
-      if (data) {
-        setItems((prev) => [...prev, rowToItem(data)]);
-      } else {
-        if (error) console.error('Inventory insert failed:', error.message);
-        setItems((prev) => [...prev, saved]);
-      }
-    } else {
-      const { error } = await supabase.from('inventory').update(row).eq('id', saved.id);
-      if (error) console.error('Inventory update failed:', error.message);
-      setItems((prev) => prev.map((i) => (i.id === saved.id ? saved : i)));
-    }
+    setItems((prev) => {
+      const next = isNew ? [...prev, saved] : prev.map((i) => (i.id === saved.id ? saved : i));
+      return localData.saveInventory(next);
+    });
     setShowAddItem(false);
     setEditingItem(null);
   };
 
   const handleDeleteItem = async (id: number) => {
-    await supabase.from('inventory').delete().eq('id', id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    setItems((prev) => localData.saveInventory(prev.filter((i) => i.id !== id)));
   };
 
   const handleToggleShare = async (id: number, shared: boolean) => {
-    await supabase.from('inventory').update({ shared }).eq('id', id);
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, shared } : i)));
+    setItems((prev) => localData.saveInventory(prev.map((i) => (i.id === id ? { ...i, shared } : i))));
   };
 
   const handleScan = (qrCode: string) => {
@@ -173,31 +122,19 @@ function MainApp() {
     if (!item) return;
     const isOut = checkedOutItems.includes(qrCode);
     if (!isOut) {
-      await supabase.from('inventory').update({
-        checked_out: true,
-        borrow_count: (item.borrowCount ?? 0) + 1,
-        checkout_purpose: purpose,
-        checkout_due_date: dueDate,
-        checked_out_by: user?.id ?? null,
-      }).eq('qr_code', qrCode);
       setItems((prev) => prev.map((i) =>
         i.qrCode === qrCode
           ? { ...i, checkedOut: true, borrowCount: (i.borrowCount ?? 0) + 1, checkoutPurpose: purpose ?? undefined, checkoutDueDate: dueDate ?? undefined }
           : i
       ));
     } else {
-      await supabase.from('inventory').update({
-        checked_out: false,
-        checkout_purpose: null,
-        checkout_due_date: null,
-        checked_out_by: null,
-      }).eq('qr_code', qrCode);
       setItems((prev) => prev.map((i) =>
         i.qrCode === qrCode
           ? { ...i, checkedOut: false, checkoutPurpose: undefined, checkoutDueDate: undefined }
           : i
       ));
     }
+    setItems((prev) => localData.saveInventory(prev));
     setCheckedOutItems((prev) => isOut ? prev.filter((q) => q !== qrCode) : [...prev, qrCode]);
     setScanResult({ item, action: isOut ? 'Checked In' : 'Checked Out' });
     setShowScanner(true);

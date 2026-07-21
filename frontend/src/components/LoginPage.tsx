@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, AlertCircle, ChevronRight, Search, X, ShieldCheck } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { BC_CLUBS } from '../data/clubs';
 import { useAuth } from '../context/AuthContext';
 
 const OSI_ADMIN_CODE = '2026';
@@ -42,7 +42,7 @@ function GoogleButton({ onClick, loading }: { onClick: () => void; loading?: boo
         <path fill="#FBBC05" d="M10.6 28.4A14.8 14.8 0 0 1 9.5 24c0-1.5.3-3 .7-4.4l-7.9-6.1A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.7 10.7l7.9-6.3z"/>
         <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.6-5.9c-2 1.4-4.6 2.2-7.6 2.2-6.2 0-11.5-3.8-13.4-9.4l-7.9 6.3C6.6 42.5 14.6 48 24 48z"/>
       </svg>
-      {loading ? 'Redirecting…' : 'Continue with Google'}
+      {loading ? 'Opening…' : 'Enter local preview'}
     </button>
   );
 }
@@ -56,10 +56,7 @@ function LandingScreen() {
   async function handleGoogle() {
     clearAuthError();
     setGoogleLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
+    devLogin();
   }
 
   return (
@@ -117,16 +114,10 @@ function OrgPinStep() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch all org names
+  // Bundled organization names keep this flow usable before the Spring API is ready.
   useEffect(() => {
-    supabase
-      .from('organizations')
-      .select('name')
-      .order('name')
-      .then(({ data }) => {
-        if (data) setOrgs(data.map((r: any) => r.name));
-        setLoadingOrgs(false);
-      });
+    setOrgs(BC_CLUBS);
+    setLoadingOrgs(false);
   }, []);
 
   // Close dropdown on outside click
@@ -170,11 +161,6 @@ function OrgPinStep() {
     e.preventDefault();
     if (adminCode !== OSI_ADMIN_CODE) { setAdminError('Incorrect admin code.'); return; }
     setAdminLoading(true);
-    // Mark this user as OSI admin in their profile
-    const { data: { user: su } } = await supabase.auth.getUser();
-    if (su) {
-      await supabase.from('profiles').update({ is_osi_admin: true }).eq('id', su.id);
-    }
     selectOrg('OSI', 'eboard');
   }
 
@@ -328,7 +314,7 @@ function OrgPinStep() {
           onClick={() => {
             localStorage.removeItem('currentOrg');
             localStorage.removeItem('currentRole');
-            supabase.auth.signOut();
+            window.location.reload();
           }}
           className="block text-center mx-auto mt-4 text-xs transition-opacity hover:opacity-60"
           style={{ color: 'rgba(255,255,255,0.35)' }}>

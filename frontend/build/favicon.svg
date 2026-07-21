@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Maroon outer background -->
+  <rect width="32" height="32" rx="7" fill="#6B0000"/>
+  <!-- Isometric box — gold strokes -->
+  <!-- Top face -->
+  <path d="M16 7 L24 11.5 L16 16 L8 11.5 Z" fill="none" stroke="#CFB87C" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- Left face -->
+  <path d="M8 11.5 L8 20.5 L16 25 L16 16 Z" fill="none" stroke="#CFB87C" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- Right face -->
+  <path d="M24 11.5 L24 20.5 L16 25 L16 16 Z" fill="none" stroke="#CFB87C" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- Center seam on top -->
+  <line x1="16" y1="7" x2="16" y2="16" stroke="#CFB87C" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

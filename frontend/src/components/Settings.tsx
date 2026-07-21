@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { localData } from '../lib/localData';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,15 +24,8 @@ export default function Settings() {
 
   useEffect(() => {
     if (!currentOrg || currentOrg === 'OSI') { setLoadingMasked(false); return; }
-    supabase
-      .from('organizations')
-      .select('eboard_pin')
-      .eq('name', currentOrg)
-      .single()
-      .then(({ data }) => {
-        if (data) setMaskedPin(data.eboard_pin);
-        setLoadingMasked(false);
-      });
+    setMaskedPin(localData.getPin(currentOrg));
+    setLoadingMasked(false);
   }, [currentOrg]);
 
   const inputClass = 'w-full px-4 py-3 rounded-xl text-sm border-2 border-gray-200 focus:outline-none focus:border-red-800 placeholder-gray-400 text-gray-800 bg-white';
@@ -47,32 +40,19 @@ export default function Settings() {
 
     // Verify current PIN against DB (unless OSI admin)
     if (!isAdmin) {
-      const { data } = await supabase
-        .from('organizations')
-        .select('eboard_pin')
-        .eq('name', currentOrg)
-        .single();
-      if (!data || data.eboard_pin !== currentPin) {
+      if (localData.getPin(currentOrg) !== currentPin) {
         setError('Current PIN is incorrect.');
         return;
       }
     }
 
     setLoading(true);
-    const { error: updateError } = await supabase
-      .from('organizations')
-      .update({ eboard_pin: newPin })
-      .eq('name', currentOrg);
-
-    if (updateError) {
-      setError('Failed to update PIN. Please try again.');
-    } else {
-      setMaskedPin(newPin);
-      setSuccess('PIN updated successfully!');
-      setCurrentPin('');
-      setNewPin('');
-      setConfirmPin('');
-    }
+    localData.setPin(currentOrg, newPin);
+    setMaskedPin(newPin);
+    setSuccess('PIN updated successfully!');
+    setCurrentPin('');
+    setNewPin('');
+    setConfirmPin('');
     setLoading(false);
   }
 
