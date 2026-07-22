@@ -19,6 +19,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/inventory").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/inventory/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/inventory/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated());
 

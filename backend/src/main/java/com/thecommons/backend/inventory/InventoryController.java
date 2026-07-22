@@ -11,11 +11,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import com.thecommons.backend.inventory.dto.CreateInventoryItemRequest;
+import com.thecommons.backend.inventory.dto.UpdateInventoryItemRequest;
 
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.RequestBody;
 // import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("/api/inventory")
@@ -48,5 +50,12 @@ public class InventoryController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteItem(@PathVariable Long id) {
         inventoryService.deleteItem(id);
+    }
+
+    @PutMapping("{id}")
+    public InventoryItem updateItem(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateInventoryItemRequest request) {
+        return inventoryService.updateItem(id, request);
     }
 }
