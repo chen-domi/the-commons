@@ -1,10 +1,15 @@
 package com.thecommons.backend.inventory;
 
 import java.util.List;
+
+import org.aspectj.internal.lang.annotation.ajcDeclareAnnotation;
 import org.springframework.stereotype.Service;
+
+import com.thecommons.backend.inventory.dto.CheckOutInventoryItemRequest;
 import com.thecommons.backend.inventory.dto.CreateInventoryItemRequest;
 import com.thecommons.backend.inventory.dto.UpdateInventoryItemRequest;
 import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
+import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
 
 @Service
@@ -59,6 +64,24 @@ public class InventoryService {
         item.setQuantity(request.quantity());
         item.setLastUsed(request.lastUsed());
         item.setShared(request.shared());
+
+        return inventoryRepository.save(item);
+    }
+
+    public InventoryItem checkoutItem(Long id, CheckOutInventoryItemRequest request) {
+        InventoryItem item = getItemById(id);
+
+        if (item.isCheckedOut()) {
+            throw new InventoryItemAlreadyCheckedOutException(id);
+        }
+
+        item.setCheckedOut(true);
+        item.setCheckoutPurpose(request.purpose());
+        item.setCheckoutDueDate(request.dueDate());
+
+        int currentBorrowCount = item.getBorrowCount() == null ? 0 : item.getBorrowCount();
+
+        item.setBorrowCount(currentBorrowCount + 1 );
 
         return inventoryRepository.save(item);
     }

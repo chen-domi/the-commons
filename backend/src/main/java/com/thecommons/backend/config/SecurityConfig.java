@@ -17,7 +17,7 @@ public class SecurityConfig {
                         .ignoringRequestMatchers("/api/inventory", "/api/inventory/**"))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/inventory").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/inventory", "/api/inventory/**").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/inventory/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/inventory/**").permitAll()
                         .requestMatchers("/error").permitAll()
