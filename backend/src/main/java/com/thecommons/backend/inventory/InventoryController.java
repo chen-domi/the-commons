@@ -75,4 +75,11 @@ public class InventoryController {
         return inventoryService.checkoutItem(id, request);
     }
 
+    @PostMapping("{id}/checkin")
+    public InventoryItem checkinItem(@PathVariable Long id) {
+        
+        return inventoryService.checkinItem(id);
+    }
+    
+
 }

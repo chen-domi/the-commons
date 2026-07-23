@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
+import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
 
 @RestControllerAdvice
@@ -82,6 +83,21 @@ public class GlobalExceptionHandler {
                                 Instant.now(),
                                 HttpStatus.CONFLICT.value(),
                                 "INVENTORY_ITEM_ALREADY_CHECKED_OUT",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.CONFLICT)
+                                .body(error);
+        }
+
+        @ExceptionHandler(InventoryItemNotCheckedOutException.class)
+        public ResponseEntity<ApiError> handleNotCheckedOut(
+                        InventoryItemNotCheckedOutException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.CONFLICT.value(),
+                                "INVENTORY_ITEM_NOT_CHECKED_OUT",
                                 exception.getMessage());
 
                 return ResponseEntity

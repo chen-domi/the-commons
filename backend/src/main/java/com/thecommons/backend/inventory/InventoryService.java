@@ -10,6 +10,7 @@ import com.thecommons.backend.inventory.dto.CreateInventoryItemRequest;
 import com.thecommons.backend.inventory.dto.UpdateInventoryItemRequest;
 import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
+import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
 
 @Service
@@ -82,6 +83,20 @@ public class InventoryService {
         int currentBorrowCount = item.getBorrowCount() == null ? 0 : item.getBorrowCount();
 
         item.setBorrowCount(currentBorrowCount + 1 );
+
+        return inventoryRepository.save(item);
+    }
+
+    public InventoryItem checkinItem(Long id ) {
+        InventoryItem item = getItemById(id);
+
+        if (!item.isCheckedOut()) {
+            throw new InventoryItemNotCheckedOutException(id);
+        }
+
+        item.setCheckedOut(false);
+        item.setCheckoutPurpose(null);
+        item.setCheckoutDueDate(null);
 
         return inventoryRepository.save(item);
     }
