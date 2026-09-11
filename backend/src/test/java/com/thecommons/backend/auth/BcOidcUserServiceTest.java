@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,11 +30,16 @@ class BcOidcUserServiceTest {
     @Mock
     private OidcUser user;
 
+    @Mock
+    private AppUserService appUserService;
+
     private BcOidcUserService bcOidcUserService;
 
     @BeforeEach
     void setUp() {
-        bcOidcUserService = new BcOidcUserService(googleOidcUserService);
+        bcOidcUserService = new BcOidcUserService(
+                googleOidcUserService,
+                appUserService);
         when(googleOidcUserService.loadUser(userRequest)).thenReturn(user);
     }
 
@@ -44,6 +51,7 @@ class BcOidcUserServiceTest {
         OidcUser result = bcOidcUserService.loadUser(userRequest);
 
         assertSame(user, result);
+        verify(appUserService).synchronizeUser(user);
     }
 
     @Test
@@ -57,6 +65,7 @@ class BcOidcUserServiceTest {
 
         assertEquals("invalid_bc_account",
                 exception.getError().getErrorCode());
+        verifyNoInteractions(appUserService);
     }
 
     @Test
@@ -70,5 +79,6 @@ class BcOidcUserServiceTest {
 
         assertEquals("invalid_bc_account",
                 exception.getError().getErrorCode());
+        verifyNoInteractions(appUserService);
     }
 }

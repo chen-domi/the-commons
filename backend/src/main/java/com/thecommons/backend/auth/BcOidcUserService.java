@@ -16,15 +16,18 @@ public class BcOidcUserService
 
     private final OAuth2UserService<OidcUserRequest, OidcUser>
             googleOidcUserService;
+    private final AppUserService appUserService;
 
-    public BcOidcUserService() {
-        this(new OidcUserService());
+    public BcOidcUserService(AppUserService appUserService) {
+        this(new OidcUserService(), appUserService);
     }
 
     BcOidcUserService(
             OAuth2UserService<OidcUserRequest, OidcUser>
-                    googleOidcUserService) {
+                    googleOidcUserService,
+            AppUserService appUserService) {
         this.googleOidcUserService = googleOidcUserService;
+        this.appUserService = appUserService;
     }
 
     @Override
@@ -44,6 +47,7 @@ public class BcOidcUserService
             throw new OAuth2AuthenticationException(error);
         }
 
+        appUserService.synchronizeUser(user);
         return user;
     }
 }
