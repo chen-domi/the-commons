@@ -3,6 +3,7 @@ package com.thecommons.backend.organization;
 import com.thecommons.backend.auth.AppUser;
 import com.thecommons.backend.auth.AppUserRepository;
 import com.thecommons.backend.auth.AuthenticatedUserNotFoundException;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,5 +39,14 @@ public class OrganizationMembershipService {
                 .findByUserAndOrganization(user, organization)
                 .orElseGet(() -> membershipRepository.save(
                         new OrganizationMembership(user, organization)));
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrganizationMembership> getMemberships(String googleSubject) {
+        AppUser user = appUserRepository
+                .findByGoogleSubject(googleSubject)
+                .orElseThrow(AuthenticatedUserNotFoundException::new);
+
+        return membershipRepository.findAllByUser(user);
     }
 }

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.thecommons.backend.auth.AppUser;
 import com.thecommons.backend.auth.AppUserRepository;
 import com.thecommons.backend.auth.AuthenticatedUserNotFoundException;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -129,6 +130,41 @@ class OrganizationMembershipServiceTest {
                         "google-subject-123",
                         "UGBC",
                         "wrong"));
+
+        verifyNoInteractions(membershipRepository);
+    }
+
+    @Test
+    void getMembershipsReturnsAuthenticatedUsersMemberships() {
+        AppUser user = new AppUser(
+                "google-subject-123",
+                "student@bc.edu",
+                "BC Student");
+        OrganizationMembership membership = new OrganizationMembership(
+                user,
+                new Organization("UGBC", "stored-hash"));
+        List<OrganizationMembership> memberships = List.of(membership);
+
+        when(appUserRepository.findByGoogleSubject("google-subject-123"))
+                .thenReturn(Optional.of(user));
+        when(membershipRepository.findAllByUser(user))
+                .thenReturn(memberships);
+
+        List<OrganizationMembership> result =
+                membershipService.getMemberships("google-subject-123");
+
+        assertSame(memberships, result);
+        verify(membershipRepository).findAllByUser(user);
+    }
+
+    @Test
+    void getMembershipsRejectsMissingApplicationUser() {
+        when(appUserRepository.findByGoogleSubject("missing-subject"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                AuthenticatedUserNotFoundException.class,
+                () -> membershipService.getMemberships("missing-subject"));
 
         verifyNoInteractions(membershipRepository);
     }

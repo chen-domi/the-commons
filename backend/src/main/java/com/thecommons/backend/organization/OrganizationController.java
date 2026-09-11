@@ -42,4 +42,12 @@ public class OrganizationController {
 
         return OrganizationMembershipResponse.from(membership);
     }
+
+    @GetMapping("/mine")
+    public List<OrganizationMembershipResponse> getMyOrganizations(
+            @AuthenticationPrincipal OidcUser oidcUser) {
+        return membershipService.getMemberships(oidcUser.getSubject()).stream()
+                .map(OrganizationMembershipResponse::from)
+                .toList();
+    }
 }

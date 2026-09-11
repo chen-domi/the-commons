@@ -118,4 +118,26 @@ class OrganizationControllerTest {
                 any(),
                 any());
     }
+
+    @Test
+    void getMyOrganizationsUsesAuthenticatedGoogleSubject() throws Exception {
+        Organization organization = new Organization("UGBC", "secret-hash");
+        ReflectionTestUtils.setField(organization, "id", 1L);
+        OrganizationMembership membership =
+                new OrganizationMembership(null, organization);
+        when(membershipService.getMemberships("google-subject-123"))
+                .thenReturn(List.of(membership));
+
+        mockMvc.perform(get("/api/organizations/mine")
+                        .with(oidcLogin().idToken(token ->
+                                token.subject("google-subject-123"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].organizationId").value(1))
+                .andExpect(jsonPath("$[0].organizationName").value("UGBC"))
+                .andExpect(jsonPath("$[0].role").value("EBOARD"))
+                .andExpect(jsonPath("$[0].joinCode").doesNotExist())
+                .andExpect(jsonPath("$[0].joinCodeHash").doesNotExist());
+
+        verify(membershipService).getMemberships("google-subject-123");
+    }
 }
