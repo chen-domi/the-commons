@@ -1,5 +1,6 @@
 package com.thecommons.backend.organization;
 
+import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,11 @@ public class OrganizationService {
             PasswordEncoder passwordEncoder) {
         this.organizationRepository = organizationRepository;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Organization> getAllOrganizations() {
+        return organizationRepository.findAllByOrderByNameAsc();
     }
 
     @Transactional

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,20 @@ class OrganizationServiceTest {
         organizationService = new OrganizationService(
                 organizationRepository,
                 passwordEncoder);
+    }
+
+    @Test
+    void getAllOrganizationsReturnsOrganizationsByName() {
+        List<Organization> organizations = List.of(
+                new Organization("Another Club", "first-hash"),
+                new Organization("UGBC", "second-hash"));
+        when(organizationRepository.findAllByOrderByNameAsc())
+                .thenReturn(organizations);
+
+        List<Organization> result = organizationService.getAllOrganizations();
+
+        assertSame(organizations, result);
+        verify(organizationRepository).findAllByOrderByNameAsc();
     }
 
     @Test
