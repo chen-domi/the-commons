@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ? [{ org: currentOrg, role: currentRole }]
             : [],
           currentOrg,
-          isOSIAdmin: currentOrg === 'OSI',
+          isOSIAdmin: authenticatedUser.globalRole === 'ADMIN',
         });
         setNeedsOrgSelection(!currentOrg);
       } catch (error) {
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser((previous) => ({
       ...(previous ?? demoUser()),
       currentOrg: orgName,
-      isOSIAdmin: orgName === 'OSI',
+      isOSIAdmin: previous?.isOSIAdmin ?? false,
       organizations: previous?.organizations.some((item) => item.org === orgName)
         ? previous.organizations
         : [...(previous?.organizations ?? []), { org: orgName, role }],

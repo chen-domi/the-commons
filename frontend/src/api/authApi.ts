@@ -2,6 +2,7 @@ export interface AuthenticatedUser {
   name: string;
   email: string;
   pictureUrl: string | null;
+  globalRole: 'USER' | 'ADMIN';
 }
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
