@@ -2,12 +2,13 @@ package com.thecommons.backend.organization;
 
 import com.thecommons.backend.auth.AppUser;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OrganizationMembershipRepository
         extends JpaRepository<OrganizationMembership, Long> {
 
-    boolean existsByUserAndOrganization(
+    Optional<OrganizationMembership> findByUserAndOrganization(
             AppUser user,
             Organization organization);
 
