@@ -1,5 +1,6 @@
 package com.thecommons.backend.auth;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -14,17 +15,16 @@ public class BcOidcUserService
 
     private static final String ALLOWED_DOMAIN = "bc.edu";
 
-    private final OAuth2UserService<OidcUserRequest, OidcUser>
-            googleOidcUserService;
+    private final OAuth2UserService<OidcUserRequest, OidcUser> googleOidcUserService;
     private final AppUserService appUserService;
 
+    @Autowired
     public BcOidcUserService(AppUserService appUserService) {
         this(new OidcUserService(), appUserService);
     }
 
     BcOidcUserService(
-            OAuth2UserService<OidcUserRequest, OidcUser>
-                    googleOidcUserService,
+            OAuth2UserService<OidcUserRequest, OidcUser> googleOidcUserService,
             AppUserService appUserService) {
         this.googleOidcUserService = googleOidcUserService;
         this.appUserService = appUserService;
