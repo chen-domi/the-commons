@@ -1,11 +1,16 @@
 package com.thecommons.backend.auth;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
@@ -47,7 +52,14 @@ public class BcOidcUserService
             throw new OAuth2AuthenticationException(error);
         }
 
-        appUserService.synchronizeUser(user);
-        return user;
+        AppUser appUser = appUserService.synchronizeUser(user);
+        Set<GrantedAuthority> authorities = new HashSet<>(user.getAuthorities());
+        authorities.add(new SimpleGrantedAuthority(
+                "ROLE_" + appUser.getGlobalRole().name()));
+
+        return new DefaultOidcUser(
+                authorities,
+                user.getIdToken(),
+                user.getUserInfo());
     }
 }

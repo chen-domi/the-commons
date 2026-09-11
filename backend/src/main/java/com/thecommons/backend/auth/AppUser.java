@@ -87,6 +87,10 @@ public class AppUser {
         this.name = name;
     }
 
+    public void changeGlobalRole(GlobalRole globalRole) {
+        this.globalRole = globalRole;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
