@@ -1,26 +1,38 @@
 package com.thecommons.backend.organization;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import com.thecommons.backend.auth.BcOidcUserService;
+import com.thecommons.backend.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
         value = OrganizationController.class,
-        properties = "spring.autoconfigure.exclude="
-                + "org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration,"
-                + "org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration")
-@AutoConfigureMockMvc(addFilters = false)
+        properties = {
+                "spring.security.oauth2.client.registration.google.client-id=test-client-id",
+                "spring.security.oauth2.client.registration.google.client-secret=test-client-secret"
+        })
+@Import(SecurityConfig.class)
+@ImportAutoConfiguration(ServletWebSecurityAutoConfiguration.class)
 class OrganizationControllerTest {
 
     @Autowired
@@ -29,6 +41,12 @@ class OrganizationControllerTest {
     @MockitoBean
     private OrganizationService organizationService;
 
+    @MockitoBean
+    private OrganizationMembershipService membershipService;
+
+    @MockitoBean
+    private BcOidcUserService bcOidcUserService;
+
     @Test
     void getAllOrganizationsReturnsSafeOrganizationDetails() throws Exception {
         Organization organization = new Organization("UGBC", "secret-hash");
@@ -36,12 +54,68 @@ class OrganizationControllerTest {
         when(organizationService.getAllOrganizations())
                 .thenReturn(List.of(organization));
 
-        mockMvc.perform(get("/api/organizations"))
+        mockMvc.perform(get("/api/organizations").with(oidcLogin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].name").value("UGBC"))
                 .andExpect(jsonPath("$[0].joinCodeHash").doesNotExist());
 
         verify(organizationService).getAllOrganizations();
+    }
+
+    @Test
+    void joinOrganizationUsesAuthenticatedGoogleSubject() throws Exception {
+        Organization organization = new Organization("UGBC", "secret-hash");
+        ReflectionTestUtils.setField(organization, "id", 1L);
+        OrganizationMembership membership =
+                new OrganizationMembership(null, organization);
+        when(membershipService.joinOrganization(
+                "google-subject-123",
+                "UGBC",
+                "1234"))
+                .thenReturn(membership);
+
+        mockMvc.perform(post("/api/organizations/join")
+                        .with(oidcLogin().idToken(token ->
+                                token.subject("google-subject-123")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "UGBC",
+                                  "joinCode": "1234"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organizationId").value(1))
+                .andExpect(jsonPath("$.organizationName").value("UGBC"))
+                .andExpect(jsonPath("$.role").value("EBOARD"))
+                .andExpect(jsonPath("$.joinCode").doesNotExist())
+                .andExpect(jsonPath("$.joinCodeHash").doesNotExist());
+
+        verify(membershipService).joinOrganization(
+                "google-subject-123",
+                "UGBC",
+                "1234");
+    }
+
+    @Test
+    void joinOrganizationRejectsNonFourDigitCode() throws Exception {
+        mockMvc.perform(post("/api/organizations/join")
+                        .with(oidcLogin())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "UGBC",
+                                  "joinCode": "12"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(membershipService, never()).joinOrganization(
+                any(),
+                any(),
+                any());
     }
 }
