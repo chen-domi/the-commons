@@ -10,12 +10,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private final AppUserService appUserService;
+
+    public AuthController(AppUserService appUserService) {
+        this.appUserService = appUserService;
+    }
+
     @GetMapping("/me")
     public AuthenticatedUserResponse getCurrentUser(
             @AuthenticationPrincipal OidcUser user) {
+        AppUser appUser = appUserService.getByGoogleSubject(user.getSubject());
+
         return new AuthenticatedUserResponse(
                 user.getFullName(),
                 user.getEmail(),
-                user.getPicture());
+                user.getPicture(),
+                appUser.getGlobalRole());
     }
 }

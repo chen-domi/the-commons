@@ -27,4 +27,10 @@ public class AppUserService {
         appUser.updateProfile(email, name);
         return appUserRepository.save(appUser);
     }
+
+    @Transactional(readOnly = true)
+    public AppUser getByGoogleSubject(String googleSubject) {
+        return appUserRepository.findByGoogleSubject(googleSubject)
+                .orElseThrow(AuthenticatedUserNotFoundException::new);
+    }
 }

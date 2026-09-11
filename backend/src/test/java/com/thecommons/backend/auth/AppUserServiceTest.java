@@ -2,6 +2,7 @@ package com.thecommons.backend.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,5 +70,30 @@ class AppUserServiceTest {
         assertEquals("updated@bc.edu", result.getEmail());
         assertEquals("Updated Name", result.getName());
         verify(appUserRepository).save(existingUser);
+    }
+
+    @Test
+    void getByGoogleSubjectReturnsUserWhenFound() {
+        AppUser existingUser = new AppUser(
+                "google-subject-123",
+                "student@bc.edu",
+                "BC Student");
+        when(appUserRepository.findByGoogleSubject("google-subject-123"))
+                .thenReturn(Optional.of(existingUser));
+
+        AppUser result = appUserService
+                .getByGoogleSubject("google-subject-123");
+
+        assertSame(existingUser, result);
+    }
+
+    @Test
+    void getByGoogleSubjectThrowsWhenUserIsMissing() {
+        when(appUserRepository.findByGoogleSubject("missing-subject"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                AuthenticatedUserNotFoundException.class,
+                () -> appUserService.getByGoogleSubject("missing-subject"));
     }
 }
