@@ -61,4 +61,12 @@ class AuthControllerTest {
 
         verify(appUserService).getByGoogleSubject("google-subject-123");
     }
+
+    @Test
+    void getCsrfTokenReturnsHeaderNameAndToken() throws Exception {
+        mockMvc.perform(get("/api/auth/csrf").with(oidcLogin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.headerName").value("X-CSRF-TOKEN"))
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
 }
