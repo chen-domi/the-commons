@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -139,5 +140,18 @@ class OrganizationControllerTest {
                 .andExpect(jsonPath("$[0].joinCodeHash").doesNotExist());
 
         verify(membershipService).getMemberships("google-subject-123");
+    }
+
+    @Test
+    void leaveOrganizationUsesAuthenticatedGoogleSubject() throws Exception {
+        mockMvc.perform(delete("/api/organizations/UGBC/membership")
+                        .with(oidcLogin().idToken(token ->
+                                token.subject("google-subject-123")))
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(membershipService).leaveOrganization(
+                "google-subject-123",
+                "UGBC");
     }
 }
