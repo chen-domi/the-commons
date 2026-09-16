@@ -61,3 +61,23 @@ export async function joinOrganization(
 
   return response.json();
 }
+
+export async function createOrganization(
+  name: string,
+  joinCode: string
+): Promise<OrganizationSummary> {
+  const csrf = await getCsrfToken();
+  const response = await fetch('/api/admin/organizations', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      [csrf.headerName]: csrf.token,
+    },
+    body: JSON.stringify({ name, joinCode }),
+  });
+
+  if (!response.ok) throw await organizationResponseError(response);
+
+  return response.json();
+}
