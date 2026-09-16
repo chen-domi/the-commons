@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, AlertCircle, ChevronRight, Search, X, ShieldCheck } from 'lucide-react';
-import { BC_CLUBS } from '../data/clubs';
+import { getOrganizations } from '../api/organizationApi';
 import { useAuth } from '../context/AuthContext';
 
 const OSI_ADMIN_CODE = '2026';
@@ -114,10 +114,30 @@ function OrgPinStep() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Bundled organization names keep this flow usable before the Spring API is ready.
   useEffect(() => {
-    setOrgs(BC_CLUBS);
-    setLoadingOrgs(false);
+    let cancelled = false;
+
+    async function loadOrganizations() {
+      try {
+        const organizations = await getOrganizations();
+        if (!cancelled) {
+          setOrgs(organizations.map((organization) => organization.name));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Could not load organizations'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingOrgs(false);
+      }
+    }
+
+    loadOrganizations();
+    return () => { cancelled = true; };
   }, []);
 
   // Close dropdown on outside click
