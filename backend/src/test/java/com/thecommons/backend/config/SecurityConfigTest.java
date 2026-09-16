@@ -1,6 +1,7 @@
 package com.thecommons.backend.config;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -49,19 +50,25 @@ class SecurityConfigTest {
 
     @Test
     void createInventoryRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/inventory"))
+        mockMvc.perform(post("/api/inventory").with(csrf()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void updateInventoryRequiresAuthentication() throws Exception {
-        mockMvc.perform(put("/api/inventory/1"))
+        mockMvc.perform(put("/api/inventory/1").with(csrf()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void deleteInventoryRequiresAuthentication() throws Exception {
-        mockMvc.perform(delete("/api/inventory/1"))
+        mockMvc.perform(delete("/api/inventory/1").with(csrf()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void inventoryMutationWithoutCsrfIsForbidden() throws Exception {
+        mockMvc.perform(post("/api/inventory"))
+                .andExpect(status().isForbidden());
     }
 }

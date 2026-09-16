@@ -22,7 +22,6 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(
-                                "/api/inventory", "/api/inventory/**",
                                 "/api/auth/logout"))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").permitAll()
