@@ -72,9 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const savedOrgIsValid =
           authenticatedUser.globalRole === 'ADMIN' ||
           organizations.some((membership) => membership.org === savedOrg);
-        const currentOrg = savedOrgIsValid ? savedOrg : '';
+        const currentOrg = savedOrgIsValid
+          ? savedOrg
+          : organizations[0]?.org ?? '';
 
-        if (!currentOrg) {
+        if (currentOrg) {
+          localStorage.setItem('currentOrg', currentOrg);
+          localStorage.setItem('currentRole', 'eboard');
+        } else {
           localStorage.removeItem('currentOrg');
           localStorage.removeItem('currentRole');
         }
