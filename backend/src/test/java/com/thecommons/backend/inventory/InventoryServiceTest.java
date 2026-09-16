@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.thecommons.backend.inventory.dto.CreateInventoryItemRequest;
@@ -18,6 +20,7 @@ import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
+import com.thecommons.backend.organization.OrganizationAuthorizationService;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,12 +30,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 @ExtendWith(MockitoExtension.class)
 class InventoryServiceTest {
 
     @Mock
     private InventoryRepository inventoryRepository;
+
+    @Mock
+    private OrganizationAuthorizationService authorizationService;
 
     @InjectMocks
     private InventoryService inventoryService;
@@ -74,9 +81,14 @@ class InventoryServiceTest {
         when(inventoryRepository.save(any(InventoryItem.class))).thenAnswer(
                 invocation -> invocation.getArgument(0));
 
-        InventoryItem result = inventoryService.createItem(request);
+        InventoryItem result = inventoryService.createItem(
+                "google-subject-123",
+                request);
 
         assertEquals("TEST-QR-001", result.getQrCode());
+        verify(authorizationService).requireCanManage(
+                "google-subject-123",
+                "Test organization");
         verify(inventoryRepository).existsByQrCode("TEST-QR-001");
         verify(inventoryRepository).save(any(InventoryItem.class));
     }
@@ -96,9 +108,40 @@ class InventoryServiceTest {
         when(inventoryRepository.existsByQrCode("TEST-QR-001")).thenReturn(
                 true);
 
-        assertThrows(DuplicateQrCodeException.class, () -> inventoryService.createItem(request));
+        assertThrows(
+                DuplicateQrCodeException.class,
+                () -> inventoryService.createItem(
+                        "google-subject-123",
+                        request));
         verify(inventoryRepository, never()).save(any(InventoryItem.class));
         verify(inventoryRepository).existsByQrCode("TEST-QR-001");
+    }
+
+    @Test
+    void createItemDoesNotAccessRepositoryWhenUserIsUnauthorized() {
+        CreateInventoryItemRequest request = new CreateInventoryItemRequest(
+                "TEST-QR-001",
+                "Test table",
+                "Furniture",
+                "Another organization",
+                "Test location",
+                1,
+                "Test event",
+                true);
+
+        doThrow(new AccessDeniedException("denied"))
+                .when(authorizationService)
+                .requireCanManage(
+                        "google-subject-123",
+                        "Another organization");
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> inventoryService.createItem(
+                        "google-subject-123",
+                        request));
+
+        verifyNoInteractions(inventoryRepository);
     }
 
     @Test

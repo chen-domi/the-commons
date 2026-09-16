@@ -1,6 +1,7 @@
 package com.thecommons.backend.inventory;
 
 import java.util.List;
+import java.security.Principal;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -47,9 +48,10 @@ public class InventoryController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public InventoryItem createItem(
+            Principal principal,
             @Valid @RequestBody CreateInventoryItemRequest request) {
 
-        return inventoryService.createItem(request);
+        return inventoryService.createItem(principal.getName(), request);
     }
 
     @DeleteMapping("/{id}")

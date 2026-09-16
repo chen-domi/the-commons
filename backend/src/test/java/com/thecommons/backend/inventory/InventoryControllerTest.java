@@ -101,22 +101,28 @@ class InventoryControllerTest {
     @Test
     void createItemReturnsCreatedAndItem() throws Exception {
         InventoryItem item = testItem();
-        when(inventoryService.createItem(any(CreateInventoryItemRequest.class)))
+        when(inventoryService.createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class)))
                 .thenReturn(item);
 
         mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateRequestJson()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.qrCode").value("TEST-QR-001"))
                 .andExpect(jsonPath("$.name").value("Test Table"));
 
-        verify(inventoryService).createItem(any(CreateInventoryItemRequest.class));
+        verify(inventoryService).createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class));
     }
 
     @Test
     void createItemReturnsBadRequestWhenRequestIsInvalid() throws Exception {
         mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -134,22 +140,27 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
         verify(inventoryService, never())
-                .createItem(any(CreateInventoryItemRequest.class));
+                .createItem(any(), any(CreateInventoryItemRequest.class));
     }
 
     @Test
     void createItemReturnsConflictWhenQrCodeIsDuplicate() throws Exception {
-        when(inventoryService.createItem(any(CreateInventoryItemRequest.class)))
+        when(inventoryService.createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class)))
                 .thenThrow(new DuplicateQrCodeException("TEST-QR-001"));
 
         mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateRequestJson()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.code").value("DUPLICATE_QR_CODE"));
 
-        verify(inventoryService).createItem(any(CreateInventoryItemRequest.class));
+        verify(inventoryService).createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class));
     }
 
     @Test

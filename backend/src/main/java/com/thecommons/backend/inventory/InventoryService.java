@@ -2,7 +2,6 @@ package com.thecommons.backend.inventory;
 
 import java.util.List;
 
-import org.aspectj.internal.lang.annotation.ajcDeclareAnnotation;
 import org.springframework.stereotype.Service;
 
 import com.thecommons.backend.inventory.dto.CheckOutInventoryItemRequest;
@@ -12,14 +11,19 @@ import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
+import com.thecommons.backend.organization.OrganizationAuthorizationService;
 
 @Service
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
+    private final OrganizationAuthorizationService authorizationService;
 
-    public InventoryService(InventoryRepository inventoryRepository) {
+    public InventoryService(
+            InventoryRepository inventoryRepository,
+            OrganizationAuthorizationService authorizationService) {
         this.inventoryRepository = inventoryRepository;
+        this.authorizationService = authorizationService;
     }
 
     public List<InventoryItem> getAllItems() {
@@ -31,7 +35,13 @@ public class InventoryService {
                 .orElseThrow(() -> new InventoryItemNotFoundException(id));
     }
 
-    public InventoryItem createItem(CreateInventoryItemRequest request) {
+    public InventoryItem createItem(
+            String googleSubject,
+            CreateInventoryItemRequest request) {
+        authorizationService.requireCanManage(
+                googleSubject,
+                request.organization());
+
         if (inventoryRepository.existsByQrCode(request.qrCode())) {
             throw new DuplicateQrCodeException(request.qrCode());
         }
