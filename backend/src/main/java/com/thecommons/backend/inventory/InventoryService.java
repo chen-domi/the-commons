@@ -92,8 +92,15 @@ public class InventoryService {
         return inventoryRepository.save(item);
     }
 
-    public InventoryItem checkoutItem(Long id, CheckOutInventoryItemRequest request) {
+    public InventoryItem checkoutItem(
+            String googleSubject,
+            Long id,
+            CheckOutInventoryItemRequest request) {
         InventoryItem item = getItemById(id);
+
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
 
         if (item.isCheckedOut()) {
             throw new InventoryItemAlreadyCheckedOutException(id);
@@ -110,8 +117,12 @@ public class InventoryService {
         return inventoryRepository.save(item);
     }
 
-    public InventoryItem checkinItem(Long id ) {
+    public InventoryItem checkinItem(String googleSubject, Long id) {
         InventoryItem item = getItemById(id);
+
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
 
         if (!item.isCheckedOut()) {
             throw new InventoryItemNotCheckedOutException(id);

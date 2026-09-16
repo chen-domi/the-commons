@@ -213,11 +213,13 @@ class InventoryControllerTest {
         item.setCheckedOut(true);
         item.setCheckoutPurpose("Test event");
         when(inventoryService.checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class)))
                 .thenReturn(item);
 
         mockMvc.perform(post("/api/inventory/1/checkout")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -230,6 +232,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.checkoutPurpose").value("Test event"));
 
         verify(inventoryService).checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class));
     }
@@ -237,11 +240,13 @@ class InventoryControllerTest {
     @Test
     void checkoutItemReturnsConflictWhenAlreadyCheckedOut() throws Exception {
         when(inventoryService.checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class)))
                 .thenThrow(new InventoryItemAlreadyCheckedOutException(1L));
 
         mockMvc.perform(post("/api/inventory/1/checkout")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -255,6 +260,7 @@ class InventoryControllerTest {
                         .value("INVENTORY_ITEM_ALREADY_CHECKED_OUT"));
 
         verify(inventoryService).checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class));
     }
@@ -262,27 +268,30 @@ class InventoryControllerTest {
     @Test
     void checkinItemReturnsOkAndAvailableItem() throws Exception {
         InventoryItem item = testItem();
-        when(inventoryService.checkinItem(1L)).thenReturn(item);
+        when(inventoryService.checkinItem("google-subject-123", 1L))
+                .thenReturn(item);
 
-        mockMvc.perform(post("/api/inventory/1/checkin"))
+        mockMvc.perform(post("/api/inventory/1/checkin")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkedOut").value(false));
 
-        verify(inventoryService).checkinItem(1L);
+        verify(inventoryService).checkinItem("google-subject-123", 1L);
     }
 
     @Test
     void checkinItemReturnsConflictWhenItemIsNotCheckedOut() throws Exception {
-        when(inventoryService.checkinItem(1L))
+        when(inventoryService.checkinItem("google-subject-123", 1L))
                 .thenThrow(new InventoryItemNotCheckedOutException(1L));
 
-        mockMvc.perform(post("/api/inventory/1/checkin"))
+        mockMvc.perform(post("/api/inventory/1/checkin")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.code")
                         .value("INVENTORY_ITEM_NOT_CHECKED_OUT"));
 
-        verify(inventoryService).checkinItem(1L);
+        verify(inventoryService).checkinItem("google-subject-123", 1L);
     }
 
     private InventoryItem testItem() {

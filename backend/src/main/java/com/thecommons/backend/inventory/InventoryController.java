@@ -75,16 +75,22 @@ public class InventoryController {
 
     @PostMapping("{id}/checkout")
     public InventoryItem checkoutItem(
+            Principal principal,
             @PathVariable Long id,
             @Valid @RequestBody CheckOutInventoryItemRequest request) {
 
-        return inventoryService.checkoutItem(id, request);
+        return inventoryService.checkoutItem(
+                principal.getName(),
+                id,
+                request);
     }
 
     @PostMapping("{id}/checkin")
-    public InventoryItem checkinItem(@PathVariable Long id) {
+    public InventoryItem checkinItem(
+            Principal principal,
+            @PathVariable Long id) {
         
-        return inventoryService.checkinItem(id);
+        return inventoryService.checkinItem(principal.getName(), id);
     }
     
 

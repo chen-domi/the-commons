@@ -358,7 +358,10 @@ class InventoryServiceTest {
         when(inventoryRepository.save(any(InventoryItem.class))).thenAnswer(
                 invocation -> invocation.getArgument(0));
 
-        InventoryItem result = inventoryService.checkoutItem(1L, request);
+        InventoryItem result = inventoryService.checkoutItem(
+                "google-subject-123",
+                1L,
+                request);
 
         assertSame(item, result);
         assertTrue(result.isCheckedOut());
@@ -367,6 +370,9 @@ class InventoryServiceTest {
         assertEquals(1, result.getBorrowCount());
 
         verify(inventoryRepository).findById(1L);
+        verify(authorizationService).requireCanManage(
+                "google-subject-123",
+                "UGBC");
         verify(inventoryRepository).save(item);
     }
 
@@ -391,7 +397,10 @@ class InventoryServiceTest {
 
         assertThrows(
                 InventoryItemAlreadyCheckedOutException.class,
-                () -> inventoryService.checkoutItem(1L, request));
+                () -> inventoryService.checkoutItem(
+                        "google-subject-123",
+                        1L,
+                        request));
 
         verify(inventoryRepository).findById(1L);
         verify(inventoryRepository, never()).save(any(InventoryItem.class));
@@ -414,7 +423,9 @@ class InventoryServiceTest {
         when(inventoryRepository.save(any(InventoryItem.class))).thenAnswer(
                 invocation -> invocation.getArgument(0));
 
-        InventoryItem result = inventoryService.checkinItem(1L);
+        InventoryItem result = inventoryService.checkinItem(
+                "google-subject-123",
+                1L);
 
         assertSame(item, result);
         assertFalse(result.isCheckedOut());
@@ -422,6 +433,9 @@ class InventoryServiceTest {
         assertNull(result.getCheckoutDueDate());
 
         verify(inventoryRepository).findById(1L);
+        verify(authorizationService).requireCanManage(
+                "google-subject-123",
+                "UGBC");
         verify(inventoryRepository).save(item);
     }
 
@@ -439,9 +453,42 @@ class InventoryServiceTest {
 
         assertThrows(
                 InventoryItemNotCheckedOutException.class,
-                () -> inventoryService.checkinItem(1L));
+                () -> inventoryService.checkinItem(
+                        "google-subject-123",
+                        1L));
 
         verify(inventoryRepository).findById(1L);
+        verify(inventoryRepository, never()).save(any(InventoryItem.class));
+    }
+
+    @Test
+    void checkoutItemDoesNotSaveWhenUserIsUnauthorized() {
+        InventoryItem item = new InventoryItem(
+                "TEST-QR-001",
+                "Test Table",
+                "Furniture",
+                "Another organization",
+                "Test Storage",
+                1);
+        CheckOutInventoryItemRequest request =
+                new CheckOutInventoryItemRequest(
+                        "Test event",
+                        LocalDate.of(2099, 1, 1));
+
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(item));
+        doThrow(new AccessDeniedException("denied"))
+                .when(authorizationService)
+                .requireCanManage(
+                        "google-subject-123",
+                        "Another organization");
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> inventoryService.checkoutItem(
+                        "google-subject-123",
+                        1L,
+                        request));
+
         verify(inventoryRepository, never()).save(any(InventoryItem.class));
     }
 }
