@@ -49,4 +49,17 @@ public class OrganizationMembershipService {
 
         return membershipRepository.findAllByUser(user);
     }
+
+    @Transactional
+    public void leaveOrganization(
+            String googleSubject,
+            String organizationName) {
+        AppUser user = appUserRepository
+                .findByGoogleSubject(googleSubject)
+                .orElseThrow(AuthenticatedUserNotFoundException::new);
+
+        membershipRepository.deleteByUserAndOrganization_NameIgnoreCase(
+                user,
+                organizationName.trim());
+    }
 }

@@ -168,4 +168,36 @@ class OrganizationMembershipServiceTest {
 
         verifyNoInteractions(membershipRepository);
     }
+
+    @Test
+    void leaveOrganizationDeletesAuthenticatedUsersMembership() {
+        AppUser user = new AppUser(
+                "google-subject-123",
+                "student@bc.edu",
+                "BC Student");
+
+        when(appUserRepository.findByGoogleSubject("google-subject-123"))
+                .thenReturn(Optional.of(user));
+
+        membershipService.leaveOrganization(
+                "google-subject-123",
+                " UGBC ");
+
+        verify(membershipRepository)
+                .deleteByUserAndOrganization_NameIgnoreCase(user, "UGBC");
+    }
+
+    @Test
+    void leaveOrganizationRejectsMissingApplicationUser() {
+        when(appUserRepository.findByGoogleSubject("missing-subject"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                AuthenticatedUserNotFoundException.class,
+                () -> membershipService.leaveOrganization(
+                        "missing-subject",
+                        "UGBC"));
+
+        verifyNoInteractions(membershipRepository);
+    }
 }
