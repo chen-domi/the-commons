@@ -200,10 +200,11 @@ class InventoryControllerTest {
 
     @Test
     void deleteItemReturnsNoContent() throws Exception {
-        mockMvc.perform(delete("/api/inventory/1"))
+        mockMvc.perform(delete("/api/inventory/1")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isNoContent());
 
-        verify(inventoryService).deleteItem(1L);
+        verify(inventoryService).deleteItem("google-subject-123", 1L);
     }
 
     @Test

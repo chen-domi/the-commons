@@ -60,8 +60,11 @@ public class InventoryService {
         return inventoryRepository.save(item);
     }
 
-    public void deleteItem(Long id) {
+    public void deleteItem(String googleSubject, Long id) {
         InventoryItem item = getItemById(id);
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
         inventoryRepository.delete(item);
     }
 

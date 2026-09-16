@@ -292,9 +292,12 @@ class InventoryServiceTest {
 
         when(inventoryRepository.findById(1L)).thenReturn(Optional.of(item));
 
-        inventoryService.deleteItem(1L);
+        inventoryService.deleteItem("google-subject-123", 1L);
 
         verify(inventoryRepository).findById(1L);
+        verify(authorizationService).requireCanManage(
+                "google-subject-123",
+                "UGBC");
         verify(inventoryRepository).delete(item);
     }
 
@@ -304,9 +307,37 @@ class InventoryServiceTest {
 
         assertThrows(
                 InventoryItemNotFoundException.class,
-                () -> inventoryService.deleteItem(1L));
+                () -> inventoryService.deleteItem(
+                        "google-subject-123",
+                        1L));
 
         verify(inventoryRepository).findById(1L);
+        verify(inventoryRepository, never()).delete(any(InventoryItem.class));
+    }
+
+    @Test
+    void deleteItemDoesNotDeleteWhenUserIsUnauthorized() {
+        InventoryItem item = new InventoryItem(
+                "TEST-QR-001",
+                "Test Table",
+                "Furniture",
+                "Another organization",
+                "Test Storage",
+                1);
+
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(item));
+        doThrow(new AccessDeniedException("denied"))
+                .when(authorizationService)
+                .requireCanManage(
+                        "google-subject-123",
+                        "Another organization");
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> inventoryService.deleteItem(
+                        "google-subject-123",
+                        1L));
+
         verify(inventoryRepository, never()).delete(any(InventoryItem.class));
     }
 
