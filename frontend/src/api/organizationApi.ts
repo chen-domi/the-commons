@@ -81,3 +81,21 @@ export async function createOrganization(
 
   return response.json();
 }
+
+export async function leaveOrganization(
+  organizationName: string
+): Promise<void> {
+  const csrf = await getCsrfToken();
+  const response = await fetch(
+    `/api/organizations/${encodeURIComponent(organizationName)}/membership`,
+    {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        [csrf.headerName]: csrf.token,
+      },
+    }
+  );
+
+  if (!response.ok) throw await organizationResponseError(response);
+}

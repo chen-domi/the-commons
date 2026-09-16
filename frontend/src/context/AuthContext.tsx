@@ -3,6 +3,7 @@ import { endCurrentSession, getCurrentUser } from '../api/authApi';
 import {
   getMyMemberships,
   joinOrganization,
+  leaveOrganization,
 } from '../api/organizationApi';
 import { AuthUser } from '../types';
 
@@ -152,7 +153,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return 'eboard';
   }, []);
 
-  const leaveOrg = useCallback(async (_orgName: string) => {}, []);
+  const leaveOrg = useCallback(async (orgName: string) => {
+    await leaveOrganization(orgName);
+
+    setUser((previous) => {
+      if (!previous) return previous;
+
+      const organizations = previous.organizations.filter(
+        (membership) => membership.org !== orgName
+      );
+      const currentOrg = previous.currentOrg === orgName
+        ? organizations[0]?.org ?? ''
+        : previous.currentOrg;
+
+      if (currentOrg) {
+        localStorage.setItem('currentOrg', currentOrg);
+        localStorage.setItem('currentRole', 'eboard');
+      } else {
+        localStorage.removeItem('currentOrg');
+        localStorage.removeItem('currentRole');
+      }
+
+      setNeedsOrgSelection(!currentOrg && !previous.isOSIAdmin);
+
+      return {
+        ...previous,
+        organizations,
+        currentOrg,
+      };
+    });
+  }, []);
   const clearAuthError = useCallback(() => setAuthError(null), []);
 
   return <AuthContext.Provider value={{
