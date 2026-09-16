@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle } from 'lucide-react';
 import { InventoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { BC_CLUBS } from '../data/clubs';
+import { getOrganizations } from '../api/organizationApi';
 import Combobox from './Combobox';
 
 interface ImpactDashboardProps {
@@ -18,7 +18,36 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const availableOrgs = BC_CLUBS;
+  const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [availableOrgs, setAvailableOrgs] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOrganizations() {
+      try {
+        const organizations = await getOrganizations();
+        if (!cancelled) {
+          setAvailableOrgs(
+            organizations.map((organization) => organization.name)
+          );
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Could not load organizations'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingOrgs(false);
+      }
+    }
+
+    loadOrganizations();
+    return () => { cancelled = true; };
+  }, []);
 
   const inputClass = 'w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent bg-white';
   const ring = { '--tw-ring-color': '#8B0000' } as React.CSSProperties;
@@ -101,7 +130,7 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
                 options={availableOrgs}
                 value={orgName}
                 onChange={setOrgName}
-                placeholder="Search organizations…"
+                placeholder={loadingOrgs ? 'Loading organizations…' : 'Search organizations…'}
                 style={ring}
               />
               <input
@@ -119,7 +148,7 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
                   <AlertCircle size={12} /> {error}
                 </div>
               )}
-              <button type="submit" disabled={loading || !orgName.trim() || pin.length !== 4}
+              <button type="submit" disabled={loading || loadingOrgs || !orgName.trim() || pin.length !== 4}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
                 style={{ backgroundColor: '#8B0000' }}>
                 {loading ? 'Joining…' : 'Join'}
