@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, AlertCircle, ChevronRight, Search, X, ShieldCheck } from 'lucide-react';
-import { getOrganizations } from '../api/organizationApi';
+import { createOrganization, getOrganizations } from '../api/organizationApi';
 import { useAuth } from '../context/AuthContext';
 
 const OSI_ADMIN_CODE = '2026';
@@ -345,13 +345,102 @@ function OrgPinStep() {
 
 function OsiAdminStep() {
   const { selectOrg } = useAuth();
+  const [organizationName, setOrganizationName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  async function handleCreateOrganization(e: React.FormEvent) {
+    e.preventDefault();
+    if (!organizationName.trim()) {
+      setError('Enter an organization name.');
+      return;
+    }
+    if (joinCode.length !== 4) {
+      setError('The PIN must be exactly 4 digits.');
+      return;
+    }
+
+    setCreating(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const organization = await createOrganization(
+        organizationName.trim(),
+        joinCode
+      );
+      setSuccess(`${organization.name} was registered.`);
+      setOrganizationName('');
+      setJoinCode('');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Could not create organization'
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <Shell>
-      <div className="w-full max-w-xs text-center">
+      <div className="w-full max-w-sm text-center">
         <Logo />
         <div className="bg-white rounded-2xl p-7 shadow-2xl">
           <p className="text-sm font-semibold text-gray-700 mb-1">OSI Admin Access</p>
-          <p className="text-xs text-gray-500 mb-5">You have global access — no PIN required.</p>
+          <p className="text-xs text-gray-500 mb-5">Register an organization before its e-board members can join.</p>
+
+          <form onSubmit={handleCreateOrganization} className="space-y-3 text-left">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Organization name</label>
+              <input
+                type="text"
+                value={organizationName}
+                onChange={(e) => {
+                  setOrganizationName(e.target.value);
+                  setError('');
+                  setSuccess('');
+                }}
+                placeholder="Example: 4Boston"
+                className="w-full px-4 py-3 rounded-xl text-sm border-2 border-gray-200 focus:outline-none focus:border-red-800"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">E-board PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={joinCode}
+                onChange={(e) => {
+                  setJoinCode(e.target.value.replace(/\D/g, ''));
+                  setError('');
+                  setSuccess('');
+                }}
+                placeholder="• • • •"
+                className="w-full px-4 py-3 rounded-xl text-center font-bold tracking-[0.6em] border-2 border-gray-200 focus:outline-none focus:border-red-800"
+              />
+            </div>
+
+            {error && (
+              <p className="flex items-center gap-1.5 text-xs text-red-600">
+                <AlertCircle size={12} /> {error}
+              </p>
+            )}
+            {success && <p className="text-xs text-green-700">{success}</p>}
+
+            <button
+              type="submit"
+              disabled={creating || !organizationName.trim() || joinCode.length !== 4}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
+              style={{ backgroundColor: '#6B0000' }}>
+              {creating ? 'Registering…' : 'Register Organization'}
+            </button>
+          </form>
+
+          <div className="my-5 border-t border-gray-100" />
           <button
             onClick={() => selectOrg('OSI', 'eboard')}
             className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
