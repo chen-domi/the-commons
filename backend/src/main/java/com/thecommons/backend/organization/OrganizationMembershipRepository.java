@@ -14,6 +14,10 @@ public interface OrganizationMembershipRepository
 
     List<OrganizationMembership> findAllByUser(AppUser user);
 
+    boolean existsByUserAndOrganization_NameIgnoreCase(
+            AppUser user,
+            String organizationName);
+
     long deleteByUserAndOrganization_NameIgnoreCase(
             AppUser user,
             String organizationName);
