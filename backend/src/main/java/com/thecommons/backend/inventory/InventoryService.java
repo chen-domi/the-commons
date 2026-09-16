@@ -65,8 +65,18 @@ public class InventoryService {
         inventoryRepository.delete(item);
     }
 
-    public InventoryItem updateItem(Long id, UpdateInventoryItemRequest request) {
+    public InventoryItem updateItem(
+            String googleSubject,
+            Long id,
+            UpdateInventoryItemRequest request) {
         InventoryItem item = getItemById(id);
+
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
+        authorizationService.requireCanManage(
+                googleSubject,
+                request.organization());
 
         item.setName(request.name());
         item.setCategory(request.category());

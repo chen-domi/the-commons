@@ -169,11 +169,13 @@ class InventoryControllerTest {
         item.setName("Updated Table");
         item.setQuantity(5);
         when(inventoryService.updateItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(UpdateInventoryItemRequest.class)))
                 .thenReturn(item);
 
         mockMvc.perform(put("/api/inventory/1")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -191,6 +193,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.quantity").value(5));
 
         verify(inventoryService).updateItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(UpdateInventoryItemRequest.class));
     }

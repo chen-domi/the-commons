@@ -63,10 +63,14 @@ public class InventoryController {
 
     @PutMapping("{id}")
     public InventoryItem updateItem(
+            Principal principal,
             @PathVariable Long id,
             @Valid @RequestBody UpdateInventoryItemRequest request) {
 
-        return inventoryService.updateItem(id, request);
+        return inventoryService.updateItem(
+                principal.getName(),
+                id,
+                request);
     }
 
     @PostMapping("{id}/checkout")

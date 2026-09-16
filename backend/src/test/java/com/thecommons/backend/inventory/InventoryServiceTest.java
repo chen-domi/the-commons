@@ -194,7 +194,10 @@ class InventoryServiceTest {
         when(inventoryRepository.save(any(InventoryItem.class))).thenAnswer(
                 invocation -> invocation.getArgument(0));
 
-        InventoryItem result = inventoryService.updateItem(1L, request);
+        InventoryItem result = inventoryService.updateItem(
+                "google-subject-123",
+                1L,
+                request);
 
         assertSame(item, result);
         assertEquals("New name", result.getName());
@@ -207,6 +210,12 @@ class InventoryServiceTest {
 
         verify(inventoryRepository).findById(1L);
         verify(inventoryRepository).save(item);
+        verify(authorizationService).requireCanManage(
+                "google-subject-123",
+                "Old organization");
+        verify(authorizationService).requireCanManage(
+                "google-subject-123",
+                "New organization");
     }
 
     @Test
@@ -223,9 +232,52 @@ class InventoryServiceTest {
 
         when(inventoryRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(InventoryItemNotFoundException.class, () -> inventoryService.updateItem(1L, request));
+        assertThrows(
+                InventoryItemNotFoundException.class,
+                () -> inventoryService.updateItem(
+                        "google-subject-123",
+                        1L,
+                        request));
         verify(inventoryRepository).findById(1L);
         verify(inventoryRepository, never()).save(any(InventoryItem.class));
+    }
+
+    @Test
+    void updateItemDoesNotSaveWhenUserCannotManageCurrentOrganization() {
+        InventoryItem item = new InventoryItem(
+                "TEST-QR-001",
+                "Old name",
+                "Furniture",
+                "Another organization",
+                "Old location",
+                1);
+        UpdateInventoryItemRequest request = new UpdateInventoryItemRequest(
+                "New name",
+                "Furniture",
+                "Users organization",
+                "New location",
+                1,
+                null,
+                true);
+
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(item));
+        doThrow(new AccessDeniedException("denied"))
+                .when(authorizationService)
+                .requireCanManage(
+                        "google-subject-123",
+                        "Another organization");
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> inventoryService.updateItem(
+                        "google-subject-123",
+                        1L,
+                        request));
+
+        verify(inventoryRepository, never()).save(any(InventoryItem.class));
+        verify(authorizationService, never()).requireCanManage(
+                "google-subject-123",
+                "Users organization");
     }
 
     @Test
