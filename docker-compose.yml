@@ -15,5 +15,18 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: jdbc:postgresql://database:5432/the_commons_inventory
+    ports:
+      - "8080:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+
 volumes:
   postgres_data:
