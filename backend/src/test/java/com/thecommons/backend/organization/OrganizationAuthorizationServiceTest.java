@@ -109,4 +109,55 @@ class OrganizationAuthorizationServiceTest {
                         org.mockito.ArgumentMatchers.any(),
                         org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    void applicationAccessAllowsGlobalAdminWithoutMembership() {
+        AppUser admin = new AppUser(
+                "admin-subject",
+                "admin@bc.edu",
+                "Admin User");
+        admin.changeGlobalRole(GlobalRole.ADMIN);
+
+        when(appUserRepository.findByGoogleSubject("admin-subject"))
+                .thenReturn(Optional.of(admin));
+
+        assertDoesNotThrow(() ->
+                authorizationService.requireApplicationAccess(
+                        "admin-subject"));
+
+        verifyNoInteractions(membershipRepository);
+    }
+
+    @Test
+    void applicationAccessAllowsOrganizationMember() {
+        AppUser user = new AppUser(
+                "member-subject",
+                "member@bc.edu",
+                "Member User");
+
+        when(appUserRepository.findByGoogleSubject("member-subject"))
+                .thenReturn(Optional.of(user));
+        when(membershipRepository.existsByUser(user)).thenReturn(true);
+
+        assertDoesNotThrow(() ->
+                authorizationService.requireApplicationAccess(
+                        "member-subject"));
+    }
+
+    @Test
+    void applicationAccessRejectsUserWithoutMembership() {
+        AppUser user = new AppUser(
+                "nonmember-subject",
+                "nonmember@bc.edu",
+                "Nonmember User");
+
+        when(appUserRepository.findByGoogleSubject("nonmember-subject"))
+                .thenReturn(Optional.of(user));
+        when(membershipRepository.existsByUser(user)).thenReturn(false);
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> authorizationService.requireApplicationAccess(
+                        "nonmember-subject"));
+    }
 }

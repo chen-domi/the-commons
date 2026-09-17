@@ -41,4 +41,19 @@ public class OrganizationAuthorizationService {
                     "You cannot manage inventory for this organization");
         }
     }
+
+    public void requireApplicationAccess(String googleSubject) {
+        AppUser user = appUserRepository
+                .findByGoogleSubject(googleSubject)
+                .orElseThrow(AuthenticatedUserNotFoundException::new);
+
+        if (user.getGlobalRole() == GlobalRole.ADMIN) {
+            return;
+        }
+
+        if (!membershipRepository.existsByUser(user)) {
+            throw new AccessDeniedException(
+                    "You must belong to an organization to access inventory");
+        }
+    }
 }

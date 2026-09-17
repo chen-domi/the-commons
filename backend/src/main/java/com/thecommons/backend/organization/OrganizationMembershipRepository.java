@@ -14,6 +14,8 @@ public interface OrganizationMembershipRepository
 
     List<OrganizationMembership> findAllByUser(AppUser user);
 
+    boolean existsByUser(AppUser user);
+
     boolean existsByUserAndOrganization_NameIgnoreCase(
             AppUser user,
             String organizationName);
