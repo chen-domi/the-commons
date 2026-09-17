@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -161,6 +162,26 @@ class InventoryControllerTest {
         verify(inventoryService).createItem(
                 eq("google-subject-123"),
                 any(CreateInventoryItemRequest.class));
+    }
+
+    @Test
+    void createItemReturnsForbiddenWhenOrganizationAccessIsDenied()
+            throws Exception {
+        when(inventoryService.createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class)))
+                .thenThrow(new AccessDeniedException(
+                        "You cannot manage inventory for this organization"));
+
+        mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validCreateRequestJson()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.message").value(
+                        "You cannot manage inventory for this organization"));
     }
 
     @Test

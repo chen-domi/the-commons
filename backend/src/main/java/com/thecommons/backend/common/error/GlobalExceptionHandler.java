@@ -3,8 +3,8 @@ package com.thecommons.backend.common.error;
 import java.time.Instant;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,6 +17,21 @@ import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+        @ExceptionHandler(AccessDeniedException.class)
+        public ResponseEntity<ApiError> handleAccessDenied(
+                        AccessDeniedException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.FORBIDDEN.value(),
+                                "ACCESS_DENIED",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.FORBIDDEN)
+                                .body(error);
+        }
 
         @ExceptionHandler(DuplicateQrCodeException.class)
         public ResponseEntity<ApiError> handleDuplicateQrCode(
