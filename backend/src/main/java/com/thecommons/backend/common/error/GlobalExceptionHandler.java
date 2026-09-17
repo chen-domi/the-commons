@@ -3,8 +3,8 @@ package com.thecommons.backend.common.error;
 import java.time.Instant;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,9 +14,56 @@ import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
+import com.thecommons.backend.organization.InvalidOrganizationJoinCodeException;
+import com.thecommons.backend.organization.OrganizationAlreadyExistsException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+        @ExceptionHandler(AccessDeniedException.class)
+        public ResponseEntity<ApiError> handleAccessDenied(
+                        AccessDeniedException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.FORBIDDEN.value(),
+                                "ACCESS_DENIED",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.FORBIDDEN)
+                                .body(error);
+        }
+
+        @ExceptionHandler(InvalidOrganizationJoinCodeException.class)
+        public ResponseEntity<ApiError> handleInvalidOrganizationJoinCode(
+                        InvalidOrganizationJoinCodeException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.BAD_REQUEST.value(),
+                                "INVALID_ORGANIZATION_JOIN_CODE",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body(error);
+        }
+
+        @ExceptionHandler(OrganizationAlreadyExistsException.class)
+        public ResponseEntity<ApiError> handleOrganizationAlreadyExists(
+                        OrganizationAlreadyExistsException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.CONFLICT.value(),
+                                "ORGANIZATION_ALREADY_EXISTS",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.CONFLICT)
+                                .body(error);
+        }
 
         @ExceptionHandler(DuplicateQrCodeException.class)
         public ResponseEntity<ApiError> handleDuplicateQrCode(

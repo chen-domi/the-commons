@@ -2,7 +2,6 @@ package com.thecommons.backend.inventory;
 
 import java.util.List;
 
-import org.aspectj.internal.lang.annotation.ajcDeclareAnnotation;
 import org.springframework.stereotype.Service;
 
 import com.thecommons.backend.inventory.dto.CheckOutInventoryItemRequest;
@@ -12,26 +11,43 @@ import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
+import com.thecommons.backend.organization.OrganizationAuthorizationService;
 
 @Service
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
+    private final OrganizationAuthorizationService authorizationService;
 
-    public InventoryService(InventoryRepository inventoryRepository) {
+    public InventoryService(
+            InventoryRepository inventoryRepository,
+            OrganizationAuthorizationService authorizationService) {
         this.inventoryRepository = inventoryRepository;
+        this.authorizationService = authorizationService;
     }
 
-    public List<InventoryItem> getAllItems() {
+    public List<InventoryItem> getAllItems(String googleSubject) {
+        authorizationService.requireApplicationAccess(googleSubject);
         return inventoryRepository.findAll();
     }
 
-    public InventoryItem getItemById(Long id) {
+    public InventoryItem getItemById(String googleSubject, Long id) {
+        authorizationService.requireApplicationAccess(googleSubject);
+        return findItemById(id);
+    }
+
+    private InventoryItem findItemById(Long id) {
         return inventoryRepository.findById(id)
                 .orElseThrow(() -> new InventoryItemNotFoundException(id));
     }
 
-    public InventoryItem createItem(CreateInventoryItemRequest request) {
+    public InventoryItem createItem(
+            String googleSubject,
+            CreateInventoryItemRequest request) {
+        authorizationService.requireCanManage(
+                googleSubject,
+                request.organization());
+
         if (inventoryRepository.existsByQrCode(request.qrCode())) {
             throw new DuplicateQrCodeException(request.qrCode());
         }
@@ -50,13 +66,26 @@ public class InventoryService {
         return inventoryRepository.save(item);
     }
 
-    public void deleteItem(Long id) {
-        InventoryItem item = getItemById(id);
+    public void deleteItem(String googleSubject, Long id) {
+        InventoryItem item = findItemById(id);
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
         inventoryRepository.delete(item);
     }
 
-    public InventoryItem updateItem(Long id, UpdateInventoryItemRequest request) {
-        InventoryItem item = getItemById(id);
+    public InventoryItem updateItem(
+            String googleSubject,
+            Long id,
+            UpdateInventoryItemRequest request) {
+        InventoryItem item = findItemById(id);
+
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
+        authorizationService.requireCanManage(
+                googleSubject,
+                request.organization());
 
         item.setName(request.name());
         item.setCategory(request.category());
@@ -69,8 +98,15 @@ public class InventoryService {
         return inventoryRepository.save(item);
     }
 
-    public InventoryItem checkoutItem(Long id, CheckOutInventoryItemRequest request) {
-        InventoryItem item = getItemById(id);
+    public InventoryItem checkoutItem(
+            String googleSubject,
+            Long id,
+            CheckOutInventoryItemRequest request) {
+        InventoryItem item = findItemById(id);
+
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
 
         if (item.isCheckedOut()) {
             throw new InventoryItemAlreadyCheckedOutException(id);
@@ -87,8 +123,12 @@ public class InventoryService {
         return inventoryRepository.save(item);
     }
 
-    public InventoryItem checkinItem(Long id ) {
-        InventoryItem item = getItemById(id);
+    public InventoryItem checkinItem(String googleSubject, Long id) {
+        InventoryItem item = findItemById(id);
+
+        authorizationService.requireCanManage(
+                googleSubject,
+                item.getOrganization());
 
         if (!item.isCheckedOut()) {
             throw new InventoryItemNotCheckedOutException(id);

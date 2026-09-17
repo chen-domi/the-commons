@@ -1,7 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { endCurrentSession, getCurrentUser } from '../api/authApi';
+import {
+  getMyMemberships,
+  joinOrganization,
+  leaveOrganization,
+} from '../api/organizationApi';
 import { AuthUser } from '../types';
-import { localData } from '../lib/localData';
 
 export interface AuthContextValue {
   user: AuthUser | null;
@@ -58,20 +62,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const currentOrg = localStorage.getItem('currentOrg') ?? '';
-        const currentRole = localStorage.getItem('currentRole') as
-          | 'eboard'
-          | null;
+        const memberships = await getMyMemberships();
+        if (cancelled) return;
+
+        const organizations = memberships.map((membership) => ({
+          org: membership.organizationName,
+          role: 'eboard' as const,
+        }));
+        const savedOrg = localStorage.getItem('currentOrg') ?? '';
+        const savedOrgIsValid =
+          authenticatedUser.globalRole === 'ADMIN' ||
+          organizations.some((membership) => membership.org === savedOrg);
+        const currentOrg = savedOrgIsValid
+          ? savedOrg
+          : organizations[0]?.org ?? '';
+
+        if (currentOrg) {
+          localStorage.setItem('currentOrg', currentOrg);
+          localStorage.setItem('currentRole', 'eboard');
+        } else {
+          localStorage.removeItem('currentOrg');
+          localStorage.removeItem('currentRole');
+        }
 
         setUser({
           id: authenticatedUser.email,
           name: authenticatedUser.name,
           email: authenticatedUser.email,
-          organizations: currentOrg && currentRole
-            ? [{ org: currentOrg, role: currentRole }]
-            : [],
+          organizations,
           currentOrg,
-          isOSIAdmin: currentOrg === 'OSI',
+          isOSIAdmin: authenticatedUser.globalRole === 'ADMIN',
         });
         setNeedsOrgSelection(!currentOrg);
       } catch (error) {
@@ -97,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser((previous) => ({
       ...(previous ?? demoUser()),
       currentOrg: orgName,
-      isOSIAdmin: orgName === 'OSI',
+      isOSIAdmin: previous?.isOSIAdmin ?? false,
       organizations: previous?.organizations.some((item) => item.org === orgName)
         ? previous.organizations
         : [...(previous?.organizations ?? []), { org: orgName, role }],
@@ -129,11 +149,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [selectOrg]);
 
   const joinOrg = useCallback(async (orgName: string, pin: string): Promise<'eboard'> => {
-    if (pin !== localData.getPin(orgName)) throw new Error('Incorrect PIN. Try 1234 for local demo data.');
+    await joinOrganization(orgName, pin);
     return 'eboard';
   }, []);
 
-  const leaveOrg = useCallback(async (_orgName: string) => {}, []);
+  const leaveOrg = useCallback(async (orgName: string) => {
+    await leaveOrganization(orgName);
+
+    setUser((previous) => {
+      if (!previous) return previous;
+
+      const organizations = previous.organizations.filter(
+        (membership) => membership.org !== orgName
+      );
+      const currentOrg = previous.currentOrg === orgName
+        ? organizations[0]?.org ?? ''
+        : previous.currentOrg;
+
+      if (currentOrg) {
+        localStorage.setItem('currentOrg', currentOrg);
+        localStorage.setItem('currentRole', 'eboard');
+      } else {
+        localStorage.removeItem('currentOrg');
+        localStorage.removeItem('currentRole');
+      }
+
+      setNeedsOrgSelection(!currentOrg && !previous.isOSIAdmin);
+
+      return {
+        ...previous,
+        organizations,
+        currentOrg,
+      };
+    });
+  }, []);
   const clearAuthError = useCallback(() => setAuthError(null), []);
 
   return <AuthContext.Provider value={{

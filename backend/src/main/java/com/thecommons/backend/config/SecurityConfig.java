@@ -22,10 +22,10 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(
-                                "/api/inventory", "/api/inventory/**",
                                 "/api/auth/logout"))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/organizations").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/inventory", "/api/inventory/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/inventory/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/inventory/**").authenticated()

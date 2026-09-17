@@ -1,6 +1,7 @@
 package com.thecommons.backend.inventory;
 
 import java.util.List;
+import java.security.Principal;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,52 +34,65 @@ public class InventoryController {
     }
 
     @GetMapping
-    public List<InventoryItem> getAllItems() {
+    public List<InventoryItem> getAllItems(Principal principal) {
 
-        return inventoryService.getAllItems();
+        return inventoryService.getAllItems(principal.getName());
     }
 
     @GetMapping("/{id}")
-    public InventoryItem getItemById(@PathVariable Long id) {
+    public InventoryItem getItemById(
+            Principal principal,
+            @PathVariable Long id) {
 
-        return inventoryService.getItemById(id);
+        return inventoryService.getItemById(principal.getName(), id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public InventoryItem createItem(
+            Principal principal,
             @Valid @RequestBody CreateInventoryItemRequest request) {
 
-        return inventoryService.createItem(request);
+        return inventoryService.createItem(principal.getName(), request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteItem(@PathVariable Long id) {
+    public void deleteItem(Principal principal, @PathVariable Long id) {
 
-        inventoryService.deleteItem(id);
+        inventoryService.deleteItem(principal.getName(), id);
     }
 
     @PutMapping("{id}")
     public InventoryItem updateItem(
+            Principal principal,
             @PathVariable Long id,
             @Valid @RequestBody UpdateInventoryItemRequest request) {
 
-        return inventoryService.updateItem(id, request);
+        return inventoryService.updateItem(
+                principal.getName(),
+                id,
+                request);
     }
 
     @PostMapping("{id}/checkout")
     public InventoryItem checkoutItem(
+            Principal principal,
             @PathVariable Long id,
             @Valid @RequestBody CheckOutInventoryItemRequest request) {
 
-        return inventoryService.checkoutItem(id, request);
+        return inventoryService.checkoutItem(
+                principal.getName(),
+                id,
+                request);
     }
 
     @PostMapping("{id}/checkin")
-    public InventoryItem checkinItem(@PathVariable Long id) {
+    public InventoryItem checkinItem(
+            Principal principal,
+            @PathVariable Long id) {
         
-        return inventoryService.checkinItem(id);
+        return inventoryService.checkinItem(principal.getName(), id);
     }
     
 

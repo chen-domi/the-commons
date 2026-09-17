@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -52,14 +53,16 @@ class InventoryControllerTest {
                 "Test Storage",
                 1);
 
-        when(inventoryService.getAllItems()).thenReturn(List.of(item));
+        when(inventoryService.getAllItems("google-subject-123"))
+                .thenReturn(List.of(item));
 
-        mockMvc.perform(get("/api/inventory"))
+        mockMvc.perform(get("/api/inventory")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].qrCode").value("TEST-QR-001"))
                 .andExpect(jsonPath("$[0].name").value("Test Table"));
 
-        verify(inventoryService).getAllItems();
+        verify(inventoryService).getAllItems("google-subject-123");
     }
 
     @Test
@@ -72,22 +75,25 @@ class InventoryControllerTest {
                 "Test Storage",
                 1);
 
-        when(inventoryService.getItemById(1L)).thenReturn(item);
+        when(inventoryService.getItemById("google-subject-123", 1L))
+                .thenReturn(item);
 
-        mockMvc.perform(get("/api/inventory/1"))
+        mockMvc.perform(get("/api/inventory/1")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.qrCode").value("TEST-QR-001"))
                 .andExpect(jsonPath("$.name").value("Test Table"));
 
-        verify(inventoryService).getItemById(1L);
+        verify(inventoryService).getItemById("google-subject-123", 1L);
     }
 
     @Test
     void getItemByIdReturnsNotFoundWhenItemIsMissing() throws Exception {
-        when(inventoryService.getItemById(99L))
+        when(inventoryService.getItemById("google-subject-123", 99L))
                 .thenThrow(new InventoryItemNotFoundException(99L));
 
-        mockMvc.perform(get("/api/inventory/99"))
+        mockMvc.perform(get("/api/inventory/99")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code")
@@ -95,28 +101,34 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.message")
                         .value("Inventory item with ID 99 was not found"));
 
-        verify(inventoryService).getItemById(99L);
+        verify(inventoryService).getItemById("google-subject-123", 99L);
     }
 
     @Test
     void createItemReturnsCreatedAndItem() throws Exception {
         InventoryItem item = testItem();
-        when(inventoryService.createItem(any(CreateInventoryItemRequest.class)))
+        when(inventoryService.createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class)))
                 .thenReturn(item);
 
         mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateRequestJson()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.qrCode").value("TEST-QR-001"))
                 .andExpect(jsonPath("$.name").value("Test Table"));
 
-        verify(inventoryService).createItem(any(CreateInventoryItemRequest.class));
+        verify(inventoryService).createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class));
     }
 
     @Test
     void createItemReturnsBadRequestWhenRequestIsInvalid() throws Exception {
         mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -134,22 +146,47 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
         verify(inventoryService, never())
-                .createItem(any(CreateInventoryItemRequest.class));
+                .createItem(any(), any(CreateInventoryItemRequest.class));
     }
 
     @Test
     void createItemReturnsConflictWhenQrCodeIsDuplicate() throws Exception {
-        when(inventoryService.createItem(any(CreateInventoryItemRequest.class)))
+        when(inventoryService.createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class)))
                 .thenThrow(new DuplicateQrCodeException("TEST-QR-001"));
 
         mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateRequestJson()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.code").value("DUPLICATE_QR_CODE"));
 
-        verify(inventoryService).createItem(any(CreateInventoryItemRequest.class));
+        verify(inventoryService).createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class));
+    }
+
+    @Test
+    void createItemReturnsForbiddenWhenOrganizationAccessIsDenied()
+            throws Exception {
+        when(inventoryService.createItem(
+                eq("google-subject-123"),
+                any(CreateInventoryItemRequest.class)))
+                .thenThrow(new AccessDeniedException(
+                        "You cannot manage inventory for this organization"));
+
+        mockMvc.perform(post("/api/inventory")
+                        .principal(() -> "google-subject-123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validCreateRequestJson()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.message").value(
+                        "You cannot manage inventory for this organization"));
     }
 
     @Test
@@ -158,11 +195,13 @@ class InventoryControllerTest {
         item.setName("Updated Table");
         item.setQuantity(5);
         when(inventoryService.updateItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(UpdateInventoryItemRequest.class)))
                 .thenReturn(item);
 
         mockMvc.perform(put("/api/inventory/1")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -180,16 +219,18 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.quantity").value(5));
 
         verify(inventoryService).updateItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(UpdateInventoryItemRequest.class));
     }
 
     @Test
     void deleteItemReturnsNoContent() throws Exception {
-        mockMvc.perform(delete("/api/inventory/1"))
+        mockMvc.perform(delete("/api/inventory/1")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isNoContent());
 
-        verify(inventoryService).deleteItem(1L);
+        verify(inventoryService).deleteItem("google-subject-123", 1L);
     }
 
     @Test
@@ -198,11 +239,13 @@ class InventoryControllerTest {
         item.setCheckedOut(true);
         item.setCheckoutPurpose("Test event");
         when(inventoryService.checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class)))
                 .thenReturn(item);
 
         mockMvc.perform(post("/api/inventory/1/checkout")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -215,6 +258,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.checkoutPurpose").value("Test event"));
 
         verify(inventoryService).checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class));
     }
@@ -222,11 +266,13 @@ class InventoryControllerTest {
     @Test
     void checkoutItemReturnsConflictWhenAlreadyCheckedOut() throws Exception {
         when(inventoryService.checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class)))
                 .thenThrow(new InventoryItemAlreadyCheckedOutException(1L));
 
         mockMvc.perform(post("/api/inventory/1/checkout")
+                        .principal(() -> "google-subject-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -240,6 +286,7 @@ class InventoryControllerTest {
                         .value("INVENTORY_ITEM_ALREADY_CHECKED_OUT"));
 
         verify(inventoryService).checkoutItem(
+                eq("google-subject-123"),
                 eq(1L),
                 any(CheckOutInventoryItemRequest.class));
     }
@@ -247,27 +294,30 @@ class InventoryControllerTest {
     @Test
     void checkinItemReturnsOkAndAvailableItem() throws Exception {
         InventoryItem item = testItem();
-        when(inventoryService.checkinItem(1L)).thenReturn(item);
+        when(inventoryService.checkinItem("google-subject-123", 1L))
+                .thenReturn(item);
 
-        mockMvc.perform(post("/api/inventory/1/checkin"))
+        mockMvc.perform(post("/api/inventory/1/checkin")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkedOut").value(false));
 
-        verify(inventoryService).checkinItem(1L);
+        verify(inventoryService).checkinItem("google-subject-123", 1L);
     }
 
     @Test
     void checkinItemReturnsConflictWhenItemIsNotCheckedOut() throws Exception {
-        when(inventoryService.checkinItem(1L))
+        when(inventoryService.checkinItem("google-subject-123", 1L))
                 .thenThrow(new InventoryItemNotCheckedOutException(1L));
 
-        mockMvc.perform(post("/api/inventory/1/checkin"))
+        mockMvc.perform(post("/api/inventory/1/checkin")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.code")
                         .value("INVENTORY_ITEM_NOT_CHECKED_OUT"));
 
-        verify(inventoryService).checkinItem(1L);
+        verify(inventoryService).checkinItem("google-subject-123", 1L);
     }
 
     private InventoryItem testItem() {

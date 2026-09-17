@@ -3,5 +3,6 @@ package com.thecommons.backend.auth;
 public record AuthenticatedUserResponse(
         String name,
         String email,
-        String pictureUrl) {
+        String pictureUrl,
+        GlobalRole globalRole) {
 }

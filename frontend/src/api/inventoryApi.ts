@@ -1,4 +1,5 @@
 import { InventoryItem } from '../types';
+import { getCsrfToken } from './authApi';
 
 const API_URL = process.env.REACT_APP_API_URL ?? '';
 
@@ -61,8 +62,19 @@ async function responseError(response: Response): Promise<Error> {
   return new Error(`Inventory request failed (${response.status})`);
 }
 
+async function mutationHeaders(includeJson: boolean): Promise<HeadersInit> {
+  const csrf = await getCsrfToken();
+
+  return {
+    ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
+    [csrf.headerName]: csrf.token,
+  };
+}
+
 export async function getInventory(): Promise<InventoryItem[]> {
-  const response = await fetch(`${API_URL}/api/inventory`);
+  const response = await fetch(`${API_URL}/api/inventory`, {
+    credentials: 'include',
+  });
 
   if (!response.ok) {
     throw await responseError(response);
@@ -77,9 +89,8 @@ export async function createInventoryItem(
 ): Promise<InventoryItem> {
   const response = await fetch(`${API_URL}/api/inventory`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    credentials: 'include',
+    headers: await mutationHeaders(true),
     body: JSON.stringify({
       qrCode: item.qrCode,
       ...inventoryRequestBody(item),
@@ -99,9 +110,8 @@ export async function updateInventoryItem(
 ): Promise<InventoryItem> {
   const response = await fetch(`${API_URL}/api/inventory/${item.id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    credentials: 'include',
+    headers: await mutationHeaders(true),
     body: JSON.stringify(inventoryRequestBody(item)),
   });
 
@@ -116,6 +126,8 @@ export async function updateInventoryItem(
 export async function deleteInventoryItem(id: number): Promise<void> {
   const response = await fetch(`${API_URL}/api/inventory/${id}`, {
     method: 'DELETE',
+    credentials: 'include',
+    headers: await mutationHeaders(false),
   });
 
   if (!response.ok) {
@@ -130,9 +142,8 @@ export async function checkoutInventoryItem(
 ): Promise<InventoryItem> {
   const response = await fetch(`${API_URL}/api/inventory/${id}/checkout`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    credentials: 'include',
+    headers: await mutationHeaders(true),
     body: JSON.stringify({ purpose, dueDate }),
   });
 
@@ -147,6 +158,8 @@ export async function checkoutInventoryItem(
 export async function checkinInventoryItem(id: number): Promise<InventoryItem> {
   const response = await fetch(`${API_URL}/api/inventory/${id}/checkin`, {
     method: 'POST',
+    credentials: 'include',
+    headers: await mutationHeaders(false),
   });
 
   if (!response.ok) {

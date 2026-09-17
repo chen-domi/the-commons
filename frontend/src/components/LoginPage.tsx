@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, AlertCircle, ChevronRight, Search, X, ShieldCheck } from 'lucide-react';
-import { BC_CLUBS } from '../data/clubs';
+import { Eye, EyeOff, AlertCircle, ChevronRight, Search, X } from 'lucide-react';
+import { createOrganization, getOrganizations } from '../api/organizationApi';
 import { useAuth } from '../context/AuthContext';
-
-const OSI_ADMIN_CODE = '2026';
 
 // ── Shared shell ───────────────────────────────────────────────────────────────
 
@@ -106,18 +104,32 @@ function OrgPinStep() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // OSI Admin flow
-  const [showAdminField, setShowAdminField] = useState(false);
-  const [adminCode, setAdminCode] = useState('');
-  const [adminError, setAdminError] = useState('');
-  const [adminLoading, setAdminLoading] = useState(false);
-
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Bundled organization names keep this flow usable before the Spring API is ready.
   useEffect(() => {
-    setOrgs(BC_CLUBS);
-    setLoadingOrgs(false);
+    let cancelled = false;
+
+    async function loadOrganizations() {
+      try {
+        const organizations = await getOrganizations();
+        if (!cancelled) {
+          setOrgs(organizations.map((organization) => organization.name));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Could not load organizations'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingOrgs(false);
+      }
+    }
+
+    loadOrganizations();
+    return () => { cancelled = true; };
   }, []);
 
   // Close dropdown on outside click
@@ -157,13 +169,6 @@ function OrgPinStep() {
     }
   }
 
-  async function handleAdminSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (adminCode !== OSI_ADMIN_CODE) { setAdminError('Incorrect admin code.'); return; }
-    setAdminLoading(true);
-    selectOrg('OSI', 'eboard');
-  }
-
   const inputClass = 'w-full px-4 py-3 rounded-xl text-sm border-2 border-gray-200 focus:outline-none focus:border-red-800 placeholder-gray-400 text-gray-800';
 
   return (
@@ -179,7 +184,6 @@ function OrgPinStep() {
         </div>
 
         <div className="bg-white rounded-2xl p-7 shadow-2xl">
-          {!showAdminField ? (
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Org selector */}
               <div>
@@ -260,53 +264,7 @@ function OrgPinStep() {
                 {loading ? 'Verifying…' : <> Access Dashboard <ChevronRight size={16} /> </>}
               </button>
 
-              {/* OSI Admin toggle */}
-              <button type="button"
-                onClick={() => setShowAdminField(true)}
-                className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors pt-1">
-                OSI Admin access
-              </button>
             </form>
-          ) : (
-            <form onSubmit={handleAdminSubmit} className="space-y-5">
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck size={16} style={{ color: '#8B0000' }} />
-                <p className="font-semibold text-gray-800 text-sm">OSI Admin Access</p>
-              </div>
-              <p className="text-xs text-gray-500 -mt-3">Enter your admin code to get global access.</p>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Admin Code</label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="• • • •"
-                  value={adminCode}
-                  autoFocus
-                  onChange={(e) => { setAdminCode(e.target.value.replace(/\D/g, '')); setAdminError(''); }}
-                  className={`${inputClass} tracking-[0.6em] text-center font-bold text-lg placeholder-gray-300`}
-                />
-                {adminError && (
-                  <p className="flex items-center gap-1.5 text-xs text-red-600 mt-1.5">
-                    <AlertCircle size={12} />{adminError}
-                  </p>
-                )}
-              </div>
-
-              <button type="submit" disabled={adminLoading || adminCode.length !== 4}
-                className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-                style={{ backgroundColor: '#6B0000' }}>
-                {adminLoading ? 'Verifying…' : <> Enter as Admin <ChevronRight size={16} /> </>}
-              </button>
-
-              <button type="button"
-                onClick={() => { setShowAdminField(false); setAdminCode(''); setAdminError(''); }}
-                className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors">
-                ← Back to org login
-              </button>
-            </form>
-          )}
         </div>
 
         {/* Sign out link */}
@@ -325,13 +283,102 @@ function OrgPinStep() {
 
 function OsiAdminStep() {
   const { selectOrg } = useAuth();
+  const [organizationName, setOrganizationName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  async function handleCreateOrganization(e: React.FormEvent) {
+    e.preventDefault();
+    if (!organizationName.trim()) {
+      setError('Enter an organization name.');
+      return;
+    }
+    if (joinCode.length !== 4) {
+      setError('The PIN must be exactly 4 digits.');
+      return;
+    }
+
+    setCreating(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const organization = await createOrganization(
+        organizationName.trim(),
+        joinCode
+      );
+      setSuccess(`${organization.name} was registered.`);
+      setOrganizationName('');
+      setJoinCode('');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Could not create organization'
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <Shell>
-      <div className="w-full max-w-xs text-center">
+      <div className="w-full max-w-sm text-center">
         <Logo />
         <div className="bg-white rounded-2xl p-7 shadow-2xl">
           <p className="text-sm font-semibold text-gray-700 mb-1">OSI Admin Access</p>
-          <p className="text-xs text-gray-500 mb-5">You have global access — no PIN required.</p>
+          <p className="text-xs text-gray-500 mb-5">Register an organization before its e-board members can join.</p>
+
+          <form onSubmit={handleCreateOrganization} className="space-y-3 text-left">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Organization name</label>
+              <input
+                type="text"
+                value={organizationName}
+                onChange={(e) => {
+                  setOrganizationName(e.target.value);
+                  setError('');
+                  setSuccess('');
+                }}
+                placeholder="Example: 4Boston"
+                className="w-full px-4 py-3 rounded-xl text-sm border-2 border-gray-200 focus:outline-none focus:border-red-800"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">E-board PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={joinCode}
+                onChange={(e) => {
+                  setJoinCode(e.target.value.replace(/\D/g, ''));
+                  setError('');
+                  setSuccess('');
+                }}
+                placeholder="• • • •"
+                className="w-full px-4 py-3 rounded-xl text-center font-bold tracking-[0.6em] border-2 border-gray-200 focus:outline-none focus:border-red-800"
+              />
+            </div>
+
+            {error && (
+              <p className="flex items-center gap-1.5 text-xs text-red-600">
+                <AlertCircle size={12} /> {error}
+              </p>
+            )}
+            {success && <p className="text-xs text-green-700">{success}</p>}
+
+            <button
+              type="submit"
+              disabled={creating || !organizationName.trim() || joinCode.length !== 4}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
+              style={{ backgroundColor: '#6B0000' }}>
+              {creating ? 'Registering…' : 'Register Organization'}
+            </button>
+          </form>
+
+          <div className="my-5 border-t border-gray-100" />
           <button
             onClick={() => selectOrg('OSI', 'eboard')}
             className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
