@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle, Building2 } from 'lucide-react';
+import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle, Building2, ChevronDown } from 'lucide-react';
 import { InventoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getOrganizations, OrganizationSummary } from '../api/organizationApi';
@@ -167,6 +167,7 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(false);
   const [organizationsError, setOrganizationsError] = useState('');
+  const [showOrganizations, setShowOrganizations] = useState(false);
   const isAdmin = !!user?.isOSIAdmin;
   const canAdd = isAdmin || user?.organizations.find((o) => o.org === user.currentOrg)?.role === 'eboard';
 
@@ -211,15 +212,30 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
         {/* Your Org */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ backgroundColor: '#fff1f2', color: '#8B0000' }}>
               <Package size={16} />
             </div>
-            <span className="text-sm font-bold text-gray-700 truncate flex-1 min-w-0">
-              {isAdmin ? 'All Organizations' : (user?.currentOrg || 'No Org')}
-            </span>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={() => setShowOrganizations((current) => !current)}
+                className="flex items-center gap-1.5 text-sm font-bold text-gray-700 truncate flex-1 min-w-0 text-left"
+                aria-expanded={showOrganizations}
+              >
+                <span className="truncate">All Organizations</span>
+                <ChevronDown
+                  size={15}
+                  className={`flex-shrink-0 text-gray-400 transition-transform ${showOrganizations ? 'rotate-180' : ''}`}
+                />
+              </button>
+            ) : (
+              <span className="text-sm font-bold text-gray-700 truncate flex-1 min-w-0">
+                {user?.currentOrg || 'No Org'}
+              </span>
+            )}
             {!isAdmin && (
               <button onClick={() => setShowOrgManager(true)}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
@@ -228,6 +244,30 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
               </button>
             )}
           </div>
+          {isAdmin && showOrganizations && (
+            <div className="absolute z-20 left-5 right-5 top-16 rounded-xl border border-gray-200 bg-white shadow-lg p-2">
+              {organizationsLoading ? (
+                <p className="px-3 py-2 text-sm text-gray-400">Loading organizations…</p>
+              ) : organizationsError ? (
+                <p className="px-3 py-2 text-sm text-red-600">{organizationsError}</p>
+              ) : organizations.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-gray-400">No organizations have been registered yet.</p>
+              ) : (
+                <div className="max-h-56 overflow-y-auto">
+                  <p className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {organizations.length} registered
+                  </p>
+                  {organizations.map((organization) => (
+                    <div key={organization.id}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-50">
+                      <Building2 size={14} className="text-gray-400 flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-700 truncate">{organization.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <p className="text-2xl font-bold text-gray-800">{myItems.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">{myItems.length === 1 ? 'item' : 'items'} in inventory</p>
           <div className="mt-3 pt-3 border-t border-gray-100">
@@ -293,46 +333,6 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
           </div>
         </div>
       </div>
-
-      {isAdmin && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: '#eef2ff', color: '#4f46e5' }}>
-                <Building2 size={16} />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-gray-700">Registered Organizations</h2>
-                <p className="text-xs text-gray-400">Organizations approved to use The Commons</p>
-              </div>
-            </div>
-            {!organizationsLoading && !organizationsError && (
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                {organizations.length}
-              </span>
-            )}
-          </div>
-
-          {organizationsLoading ? (
-            <p className="text-sm text-gray-400">Loading organizations…</p>
-          ) : organizationsError ? (
-            <p className="text-sm text-red-600">{organizationsError}</p>
-          ) : organizations.length === 0 ? (
-            <p className="text-sm text-gray-400">No organizations have been registered yet.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {organizations.map((organization) => (
-                <div key={organization.id}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50">
-                  <Building2 size={14} className="text-gray-400 flex-shrink-0" />
-                  <span className="text-sm font-medium text-gray-700 truncate">{organization.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Tip row */}
       {tipItem && canAdd && (
