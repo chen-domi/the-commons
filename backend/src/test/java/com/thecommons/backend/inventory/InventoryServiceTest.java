@@ -56,10 +56,13 @@ class InventoryServiceTest {
 
         when(inventoryRepository.findAll()).thenReturn(List.of(item));
 
-        List<InventoryItem> result = inventoryService.getAllItems();
+        List<InventoryItem> result = inventoryService.getAllItems(
+                "google-subject-123");
 
         assertEquals(1, result.size());
         assertSame(item, result.getFirst());
+        verify(authorizationService).requireApplicationAccess(
+                "google-subject-123");
         verify(inventoryRepository).findAll();
     }
 
@@ -156,9 +159,13 @@ class InventoryServiceTest {
 
         when(inventoryRepository.findById(1L)).thenReturn(Optional.of(item));
 
-        InventoryItem result = inventoryService.getItemById(1L);
+        InventoryItem result = inventoryService.getItemById(
+                "google-subject-123",
+                1L);
 
         assertSame(item, result);
+        verify(authorizationService).requireApplicationAccess(
+                "google-subject-123");
         verify(inventoryRepository).findById(1L);
     }
 
@@ -167,7 +174,11 @@ class InventoryServiceTest {
 
         when(inventoryRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(InventoryItemNotFoundException.class, () -> inventoryService.getItemById(1L));
+        assertThrows(
+                InventoryItemNotFoundException.class,
+                () -> inventoryService.getItemById(
+                        "google-subject-123",
+                        1L));
         verify(inventoryRepository).findById(1L);
     }
 

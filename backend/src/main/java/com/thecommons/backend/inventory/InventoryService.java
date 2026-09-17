@@ -26,11 +26,17 @@ public class InventoryService {
         this.authorizationService = authorizationService;
     }
 
-    public List<InventoryItem> getAllItems() {
+    public List<InventoryItem> getAllItems(String googleSubject) {
+        authorizationService.requireApplicationAccess(googleSubject);
         return inventoryRepository.findAll();
     }
 
-    public InventoryItem getItemById(Long id) {
+    public InventoryItem getItemById(String googleSubject, Long id) {
+        authorizationService.requireApplicationAccess(googleSubject);
+        return findItemById(id);
+    }
+
+    private InventoryItem findItemById(Long id) {
         return inventoryRepository.findById(id)
                 .orElseThrow(() -> new InventoryItemNotFoundException(id));
     }
@@ -61,7 +67,7 @@ public class InventoryService {
     }
 
     public void deleteItem(String googleSubject, Long id) {
-        InventoryItem item = getItemById(id);
+        InventoryItem item = findItemById(id);
         authorizationService.requireCanManage(
                 googleSubject,
                 item.getOrganization());
@@ -72,7 +78,7 @@ public class InventoryService {
             String googleSubject,
             Long id,
             UpdateInventoryItemRequest request) {
-        InventoryItem item = getItemById(id);
+        InventoryItem item = findItemById(id);
 
         authorizationService.requireCanManage(
                 googleSubject,
@@ -96,7 +102,7 @@ public class InventoryService {
             String googleSubject,
             Long id,
             CheckOutInventoryItemRequest request) {
-        InventoryItem item = getItemById(id);
+        InventoryItem item = findItemById(id);
 
         authorizationService.requireCanManage(
                 googleSubject,
@@ -118,7 +124,7 @@ public class InventoryService {
     }
 
     public InventoryItem checkinItem(String googleSubject, Long id) {
-        InventoryItem item = getItemById(id);
+        InventoryItem item = findItemById(id);
 
         authorizationService.requireCanManage(
                 googleSubject,

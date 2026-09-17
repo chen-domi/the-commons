@@ -24,7 +24,7 @@ public class SecurityConfig {
                         .ignoringRequestMatchers(
                                 "/api/auth/logout"))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/admin/organizations").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/inventory", "/api/inventory/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/inventory/**").authenticated()

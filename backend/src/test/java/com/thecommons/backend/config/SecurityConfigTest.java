@@ -2,6 +2,7 @@ package com.thecommons.backend.config;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,10 +42,19 @@ class SecurityConfigTest {
     private BcOidcUserService bcOidcUserService;
 
     @Test
-    void getInventoryIsPublic() throws Exception {
-        when(inventoryService.getAllItems()).thenReturn(List.of());
-
+    void getInventoryRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/inventory"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getInventoryAllowsAuthenticatedUser() throws Exception {
+        when(inventoryService.getAllItems("google-subject-123"))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/inventory")
+                        .with(oidcLogin().idToken(token ->
+                                token.subject("google-subject-123"))))
                 .andExpect(status().isOk());
     }
 

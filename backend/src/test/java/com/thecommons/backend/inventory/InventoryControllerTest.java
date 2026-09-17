@@ -53,14 +53,16 @@ class InventoryControllerTest {
                 "Test Storage",
                 1);
 
-        when(inventoryService.getAllItems()).thenReturn(List.of(item));
+        when(inventoryService.getAllItems("google-subject-123"))
+                .thenReturn(List.of(item));
 
-        mockMvc.perform(get("/api/inventory"))
+        mockMvc.perform(get("/api/inventory")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].qrCode").value("TEST-QR-001"))
                 .andExpect(jsonPath("$[0].name").value("Test Table"));
 
-        verify(inventoryService).getAllItems();
+        verify(inventoryService).getAllItems("google-subject-123");
     }
 
     @Test
@@ -73,22 +75,25 @@ class InventoryControllerTest {
                 "Test Storage",
                 1);
 
-        when(inventoryService.getItemById(1L)).thenReturn(item);
+        when(inventoryService.getItemById("google-subject-123", 1L))
+                .thenReturn(item);
 
-        mockMvc.perform(get("/api/inventory/1"))
+        mockMvc.perform(get("/api/inventory/1")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.qrCode").value("TEST-QR-001"))
                 .andExpect(jsonPath("$.name").value("Test Table"));
 
-        verify(inventoryService).getItemById(1L);
+        verify(inventoryService).getItemById("google-subject-123", 1L);
     }
 
     @Test
     void getItemByIdReturnsNotFoundWhenItemIsMissing() throws Exception {
-        when(inventoryService.getItemById(99L))
+        when(inventoryService.getItemById("google-subject-123", 99L))
                 .thenThrow(new InventoryItemNotFoundException(99L));
 
-        mockMvc.perform(get("/api/inventory/99"))
+        mockMvc.perform(get("/api/inventory/99")
+                        .principal(() -> "google-subject-123"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code")
@@ -96,7 +101,7 @@ class InventoryControllerTest {
                 .andExpect(jsonPath("$.message")
                         .value("Inventory item with ID 99 was not found"));
 
-        verify(inventoryService).getItemById(99L);
+        verify(inventoryService).getItemById("google-subject-123", 99L);
     }
 
     @Test

@@ -34,15 +34,17 @@ public class InventoryController {
     }
 
     @GetMapping
-    public List<InventoryItem> getAllItems() {
+    public List<InventoryItem> getAllItems(Principal principal) {
 
-        return inventoryService.getAllItems();
+        return inventoryService.getAllItems(principal.getName());
     }
 
     @GetMapping("/{id}")
-    public InventoryItem getItemById(@PathVariable Long id) {
+    public InventoryItem getItemById(
+            Principal principal,
+            @PathVariable Long id) {
 
-        return inventoryService.getItemById(id);
+        return inventoryService.getItemById(principal.getName(), id);
     }
 
     @PostMapping

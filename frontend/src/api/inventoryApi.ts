@@ -72,7 +72,9 @@ async function mutationHeaders(includeJson: boolean): Promise<HeadersInit> {
 }
 
 export async function getInventory(): Promise<InventoryItem[]> {
-  const response = await fetch(`${API_URL}/api/inventory`);
+  const response = await fetch(`${API_URL}/api/inventory`, {
+    credentials: 'include',
+  });
 
   if (!response.ok) {
     throw await responseError(response);
