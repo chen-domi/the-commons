@@ -14,6 +14,8 @@ import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
+import com.thecommons.backend.organization.InvalidOrganizationJoinCodeException;
+import com.thecommons.backend.organization.OrganizationAlreadyExistsException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -30,6 +32,36 @@ public class GlobalExceptionHandler {
 
                 return ResponseEntity
                                 .status(HttpStatus.FORBIDDEN)
+                                .body(error);
+        }
+
+        @ExceptionHandler(InvalidOrganizationJoinCodeException.class)
+        public ResponseEntity<ApiError> handleInvalidOrganizationJoinCode(
+                        InvalidOrganizationJoinCodeException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.BAD_REQUEST.value(),
+                                "INVALID_ORGANIZATION_JOIN_CODE",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body(error);
+        }
+
+        @ExceptionHandler(OrganizationAlreadyExistsException.class)
+        public ResponseEntity<ApiError> handleOrganizationAlreadyExists(
+                        OrganizationAlreadyExistsException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.CONFLICT.value(),
+                                "ORGANIZATION_ALREADY_EXISTS",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.CONFLICT)
                                 .body(error);
         }
 

@@ -88,6 +88,26 @@ class AdminOrganizationControllerTest {
         verifyNoInteractions(organizationService);
     }
 
+    @Test
+    void createOrganizationReturnsConflictWhenNameAlreadyExists()
+            throws Exception {
+        when(organizationService.createOrganization("UGBC", "1234"))
+                .thenThrow(new OrganizationAlreadyExistsException("UGBC"));
+
+        mockMvc.perform(post("/api/admin/organizations")
+                        .with(oidcLogin().authorities(
+                                new SimpleGrantedAuthority("ROLE_ADMIN")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequestJson()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.code")
+                        .value("ORGANIZATION_ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.message")
+                        .value("Organization already exists: UGBC"));
+    }
+
     private String validRequestJson() {
         return """
                 {

@@ -121,6 +121,34 @@ class OrganizationControllerTest {
     }
 
     @Test
+    void joinOrganizationReturnsBadRequestWhenCodeIsIncorrect()
+            throws Exception {
+        when(membershipService.joinOrganization(
+                "google-subject-123",
+                "UGBC",
+                "9999"))
+                .thenThrow(new InvalidOrganizationJoinCodeException());
+
+        mockMvc.perform(post("/api/organizations/join")
+                        .with(oidcLogin().idToken(token ->
+                                token.subject("google-subject-123")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "UGBC",
+                                  "joinCode": "9999"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code")
+                        .value("INVALID_ORGANIZATION_JOIN_CODE"))
+                .andExpect(jsonPath("$.message")
+                        .value("Organization name or join code is incorrect"));
+    }
+
+    @Test
     void getMyOrganizationsUsesAuthenticatedGoogleSubject() throws Exception {
         Organization organization = new Organization("UGBC", "secret-hash");
         ReflectionTestUtils.setField(organization, "id", 1L);
