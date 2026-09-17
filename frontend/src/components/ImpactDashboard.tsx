@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle } from 'lucide-react';
+import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle, Building2 } from 'lucide-react';
 import { InventoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { getOrganizations } from '../api/organizationApi';
+import { getOrganizations, OrganizationSummary } from '../api/organizationApi';
 import Combobox from './Combobox';
 
 interface ImpactDashboardProps {
@@ -164,8 +164,36 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
 export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, onScanClick }: ImpactDashboardProps) {
   const { user } = useAuth();
   const [showOrgManager, setShowOrgManager] = useState(false);
+  const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
+  const [organizationsLoading, setOrganizationsLoading] = useState(false);
+  const [organizationsError, setOrganizationsError] = useState('');
   const isAdmin = !!user?.isOSIAdmin;
   const canAdd = isAdmin || user?.organizations.find((o) => o.org === user.currentOrg)?.role === 'eboard';
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let cancelled = false;
+    setOrganizationsLoading(true);
+    setOrganizationsError('');
+
+    getOrganizations()
+      .then((registeredOrganizations) => {
+        if (!cancelled) setOrganizations(registeredOrganizations);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setOrganizationsError(
+            error instanceof Error ? error.message : 'Could not load organizations'
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setOrganizationsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   const myItems = isAdmin ? items : items.filter((i) => i.org === user?.currentOrg);
   const myShared = myItems.filter((i) => i.shared);
@@ -265,6 +293,46 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
           </div>
         </div>
       </div>
+
+      {isAdmin && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: '#eef2ff', color: '#4f46e5' }}>
+                <Building2 size={16} />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-700">Registered Organizations</h2>
+                <p className="text-xs text-gray-400">Organizations approved to use The Commons</p>
+              </div>
+            </div>
+            {!organizationsLoading && !organizationsError && (
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                {organizations.length}
+              </span>
+            )}
+          </div>
+
+          {organizationsLoading ? (
+            <p className="text-sm text-gray-400">Loading organizations…</p>
+          ) : organizationsError ? (
+            <p className="text-sm text-red-600">{organizationsError}</p>
+          ) : organizations.length === 0 ? (
+            <p className="text-sm text-gray-400">No organizations have been registered yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {organizations.map((organization) => (
+                <div key={organization.id}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50">
+                  <Building2 size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-700 truncate">{organization.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tip row */}
       {tipItem && canAdd && (
