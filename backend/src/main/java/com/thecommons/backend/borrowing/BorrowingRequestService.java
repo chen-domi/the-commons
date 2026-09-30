@@ -127,7 +127,11 @@ public class BorrowingRequestService {
                 request.getLendingOrganization().getName());
         requireStatus(request, BorrowingRequestStatus.PENDING);
 
-        int available = availableQuantity(request.getInventoryItem());
+        InventoryItem item = inventoryRepository
+                .findByIdForUpdate(request.getInventoryItem().getId())
+                .orElseThrow(() -> new InventoryItemNotFoundException(
+                        request.getInventoryItem().getId()));
+        int available = availableQuantity(item);
         if (request.getQuantity() > available) {
             throw new InsufficientInventoryException(request.getQuantity(), available);
         }

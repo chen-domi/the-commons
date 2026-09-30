@@ -119,6 +119,8 @@ class BorrowingRequestServiceTest {
         BorrowingRequest request = borrowingRequest(2);
         when(borrowingRequestRepository.findById(10L))
                 .thenReturn(Optional.of(request));
+        when(inventoryRepository.findByIdForUpdate(item.getId()))
+                .thenReturn(Optional.of(item));
         when(borrowingRequestRepository.sumQuantityByInventoryItemAndStatus(
                 item, BorrowingRequestStatus.APPROVED)).thenReturn(2L);
         when(appUserRepository.findByGoogleSubject("reviewer-subject"))
@@ -137,6 +139,8 @@ class BorrowingRequestServiceTest {
         BorrowingRequest request = borrowingRequest(2);
         when(borrowingRequestRepository.findById(10L))
                 .thenReturn(Optional.of(request));
+        when(inventoryRepository.findByIdForUpdate(item.getId()))
+                .thenReturn(Optional.of(item));
         when(borrowingRequestRepository.sumQuantityByInventoryItemAndStatus(
                 item, BorrowingRequestStatus.APPROVED)).thenReturn(4L);
 
