@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Package, Recycle, ArrowLeftRight, Plus, Globe, Inbox, ShieldCheck, Trophy } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Package, Recycle, ArrowLeftRight, Plus, Globe, Inbox, ShieldCheck, Trophy, ClipboardList } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
@@ -22,9 +22,11 @@ import LoginPage from './components/LoginPage';
 import AddItemModal from './components/AddItemModal';
 import CheckoutDetailsModal from './components/CheckoutDetailsModal';
 import Leaderboard from './components/Leaderboard';
-import { InventoryItem, ScanResult } from './types';
+import BorrowingActivity from './components/BorrowingActivity';
+import { getBorrowingNotificationSummary } from './api/borrowingApi';
+import { BorrowingNotificationSummary, InventoryItem, ScanResult } from './types';
 
-type Tab = 'club-inventory' | 'global-inventory' | 'marketplace' | 'wanted' | 'leaderboard';
+type Tab = 'club-inventory' | 'global-inventory' | 'marketplace' | 'borrowing' | 'wanted' | 'leaderboard';
 
 export default function App() {
   return (
@@ -66,6 +68,10 @@ function MainApp() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterOrg, setFilterOrg] = useState('');
   const [requestCount, setRequestCount] = useState(0);
+  const [borrowingSummary, setBorrowingSummary] = useState<BorrowingNotificationSummary>({
+    pendingIncomingRequests: 0,
+    approvedOutgoingBorrows: 0,
+  });
 
   const isAdmin = !!user?.isOSIAdmin;
   // Role is stored in localStorage after PIN entry — scoped to the current session's org
@@ -112,6 +118,18 @@ function MainApp() {
   useEffect(() => {
     setRequestCount(localData.getRequests().length);
   }, []);
+
+  const loadBorrowingSummary = useCallback(async () => {
+    try {
+      setBorrowingSummary(await getBorrowingNotificationSummary());
+    } catch {
+      setBorrowingSummary({ pendingIncomingRequests: 0, approvedOutgoingBorrows: 0 });
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBorrowingSummary();
+  }, [loadBorrowingSummary]);
 
   const handleSaveItem = async (saved: InventoryItem) => {
     const isNew = !items.some((i) => i.id === saved.id);
@@ -264,6 +282,7 @@ function MainApp() {
     { key: 'club-inventory',   label: isAdmin ? 'All Organizations' : 'Your Inventory', icon: <Package size={15} />, count: clubItems.length },
     { key: 'global-inventory', label: 'Global Inventory', icon: <Globe size={15} />,            count: globalItems.length },
     { key: 'marketplace',      label: 'Marketplace',      icon: <ArrowLeftRight size={15} />,   count: items.filter((i) => i.shared).length },
+    { key: 'borrowing',        label: 'Borrowing',        icon: <ClipboardList size={15} />,    count: borrowingSummary.pendingIncomingRequests + borrowingSummary.approvedOutgoingBorrows },
     { key: 'wanted',           label: 'Wanted',           icon: <Inbox size={15} />,            count: requestCount },
     { key: 'leaderboard',      label: 'Leaderboard',      icon: <Trophy size={15} /> },
   ];
@@ -288,7 +307,9 @@ function MainApp() {
           items={items}
           onAddItem={() => { setActiveTab('club-inventory'); setEditingItem(null); setShowAddItem(true); }}
           onGoToMarketplace={() => setActiveTab('marketplace')}
+          onGoToBorrowing={() => setActiveTab('borrowing')}
           onScanClick={() => { setScanResult(null); setShowScanner(true); }}
+          notificationSummary={borrowingSummary}
         />
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -315,7 +336,7 @@ function MainApp() {
           </div>
 
           {/* Toolbar */}
-          {activeTab !== 'wanted' && activeTab !== 'leaderboard' && (
+          {activeTab !== 'wanted' && activeTab !== 'borrowing' && activeTab !== 'leaderboard' && (
           <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/50 flex flex-wrap items-center gap-3">
             {activeTab !== 'marketplace' && (
               <div className="relative max-w-sm flex-1 min-w-[160px]">
@@ -403,7 +424,19 @@ function MainApp() {
                   />
                 )}
                 {activeTab === 'marketplace' && (
-                  <SharingMarketplace items={items} checkedOutItems={checkedOutItems} filterCategory={filterCategory} filterOrg={filterOrg} />
+                  <SharingMarketplace
+                    items={items}
+                    checkedOutItems={checkedOutItems}
+                    filterCategory={filterCategory}
+                    filterOrg={filterOrg}
+                    onRequestCreated={() => {
+                      loadBorrowingSummary();
+                      setActiveTab('borrowing');
+                    }}
+                  />
+                )}
+                {activeTab === 'borrowing' && (
+                  <BorrowingActivity onSummaryChanged={loadBorrowingSummary} />
                 )}
                 {activeTab === 'wanted' && (
                   <RequestsBoard

@@ -10,9 +10,10 @@ interface SharingMarketplaceProps {
   checkedOutItems: string[];
   filterCategory: string;
   filterOrg: string;
+  onRequestCreated: () => void;
 }
 
-export default function SharingMarketplace({ items, checkedOutItems, filterCategory, filterOrg }: SharingMarketplaceProps) {
+export default function SharingMarketplace({ items, checkedOutItems, filterCategory, filterOrg, onRequestCreated }: SharingMarketplaceProps) {
   const { user } = useAuth();
   const [requestItem, setRequestItem] = useState<InventoryItem | null>(null);
 
@@ -42,12 +43,14 @@ export default function SharingMarketplace({ items, checkedOutItems, filterCateg
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {available.map((item) => {
-            const isOwn = !user?.isOSIAdmin && item.org === user?.currentOrg;
+            const hasBorrowingOrganization = !!user?.currentOrg;
+            const isOwn = item.org === user?.currentOrg;
             return (
               <MarketplaceCard
                 key={item.id}
                 item={item}
                 isOwn={isOwn}
+                canRequest={hasBorrowingOrganization && !isOwn}
                 onRequest={() => setRequestItem(item)}
               />
             );
@@ -56,7 +59,11 @@ export default function SharingMarketplace({ items, checkedOutItems, filterCateg
       )}
 
       {requestItem && (
-        <BorrowRequestModal item={requestItem} onClose={() => setRequestItem(null)} />
+        <BorrowRequestModal
+          item={requestItem}
+          onClose={() => setRequestItem(null)}
+          onCreated={onRequestCreated}
+        />
       )}
     </div>
   );
@@ -65,8 +72,8 @@ export default function SharingMarketplace({ items, checkedOutItems, filterCateg
 // ── Card ──────────────────────────────────────────────────────────────────────
 
 function MarketplaceCard({
-  item, isOwn, onRequest,
-}: { item: InventoryItem; isOwn: boolean; onRequest: () => void }) {
+  item, isOwn, canRequest, onRequest,
+}: { item: InventoryItem; isOwn: boolean; canRequest: boolean; onRequest: () => void }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all p-5 flex flex-col">
       <div className="flex items-start justify-between mb-3">
@@ -87,7 +94,7 @@ function MarketplaceCard({
       <div className="flex items-center gap-2 mb-4">
         <Package size={13} className="text-gray-400" />
         <span className="text-sm text-gray-600">
-          <span className="font-semibold text-gray-800">{item.quantity}</span> available
+          <span className="font-semibold text-gray-800">{item.quantity}</span> total units
         </span>
       </div>
 
@@ -95,6 +102,11 @@ function MarketplaceCard({
         <div className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold text-center"
           style={{ backgroundColor: '#f3f4f6', color: '#6b7280' }}>
           Your listing
+        </div>
+      ) : !canRequest ? (
+        <div className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold text-center"
+          style={{ backgroundColor: '#f3f4f6', color: '#6b7280' }}>
+          Select an organization to request
         </div>
       ) : (
         <button

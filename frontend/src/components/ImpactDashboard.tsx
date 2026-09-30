@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle, Building2, ChevronDown } from 'lucide-react';
-import { InventoryItem } from '../types';
+import { BorrowingNotificationSummary, InventoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getOrganizations, OrganizationSummary } from '../api/organizationApi';
 import Combobox from './Combobox';
@@ -9,7 +9,9 @@ interface ImpactDashboardProps {
   items: InventoryItem[];
   onAddItem: () => void;
   onGoToMarketplace: () => void;
+  onGoToBorrowing: () => void;
   onScanClick: () => void;
+  notificationSummary: BorrowingNotificationSummary;
 }
 
 function OrgManagerModal({ onClose }: { onClose: () => void }) {
@@ -161,7 +163,7 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, onScanClick }: ImpactDashboardProps) {
+export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, onGoToBorrowing, onScanClick, notificationSummary }: ImpactDashboardProps) {
   const { user } = useAuth();
   const [showOrgManager, setShowOrgManager] = useState(false);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
@@ -202,9 +204,8 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   const tipItem = myItems.find((i) => !i.shared && (!i.createdAt || new Date(i.createdAt) <= threeMonthsAgo)) ?? null;
 
-  // Demo notification counts
-  const pendingRequests = 2;
-  const approvedBorrows = 1;
+  const pendingRequests = notificationSummary.pendingIncomingRequests;
+  const approvedBorrows = notificationSummary.approvedOutgoingBorrows;
 
   return (
     <div className="mb-6 space-y-3">
@@ -298,7 +299,7 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
               </span>
             </div>
           </div>
-          <button onClick={onGoToMarketplace}
+          <button onClick={onGoToBorrowing}
             className="mt-3 pt-3 border-t border-gray-100 w-full text-left text-xs font-semibold transition-colors hover:opacity-70"
             style={{ color: '#8B0000' }}>
             View all activity →
@@ -322,7 +323,7 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
                 <Plus size={14} /> Add item
               </button>
             )}
-            <button onClick={onGoToMarketplace}
+            <button onClick={onGoToBorrowing}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
               <ArrowLeftRight size={14} /> View requests
             </button>

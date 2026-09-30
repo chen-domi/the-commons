@@ -2,43 +2,55 @@ import React, { useState } from 'react';
 import { X, Send, Package, MapPin } from 'lucide-react';
 import { InventoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { createBorrowingRequest } from '../api/borrowingApi';
 
 interface BorrowRequestModalProps {
   item: InventoryItem;
   onClose: () => void;
+  onCreated: () => void;
 }
 
-export default function BorrowRequestModal({ item, onClose }: BorrowRequestModalProps) {
+export default function BorrowRequestModal({ item, onClose, onCreated }: BorrowRequestModalProps) {
   const { user } = useAuth();
   const [eventName, setEventName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  function handleSubmit(e: React.SyntheticEvent) {
+  async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
+    if (!user?.currentOrg) {
+      setError('Select an organization before requesting an item.');
+      return;
+    }
 
-    const body = [
-      `Borrow Request from ${user?.name ?? 'Unknown'} (${user?.currentOrg ?? 'Unknown Org'})`,
-      '',
-      `Item: ${item.name}`,
-      `QR Code: ${item.qrCode}`,
-      `Quantity Requested: ${quantity} of ${item.quantity} available`,
-      '',
-      `Event: ${eventName}`,
-      `Date Range: ${startDate} to ${endDate}`,
-      notes ? `Notes: ${notes}` : '',
-      '',
-      `Requester Email: ${user?.email ?? ''}`,
-    ].filter((l) => l !== undefined).join('\n');
-
-    const ownerEmail = `eboard@bc.edu`; // placeholder — real app would look up contact
-    const subject = encodeURIComponent(`[The Commons] Borrow Request: ${item.name}`);
-    const bodyEncoded = encodeURIComponent(body);
-
-    window.open(`mailto:${ownerEmail}?subject=${subject}&body=${bodyEncoded}`);
-    onClose();
+    setLoading(true);
+    setError('');
+    try {
+      await createBorrowingRequest({
+        inventoryItemId: item.id,
+        borrowingOrganization: user.currentOrg,
+        quantity: Number(quantity),
+        purpose: notes.trim()
+          ? `${eventName.trim()}: ${notes.trim()}`
+          : eventName.trim(),
+        startDate,
+        dueDate: endDate,
+      });
+      onCreated();
+      onClose();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not submit borrowing request'
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputClass =
@@ -59,7 +71,7 @@ export default function BorrowRequestModal({ item, onClose }: BorrowRequestModal
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="font-bold text-gray-800">Request to Borrow</h2>
-            <p className="text-xs text-gray-400 mt-0.5">This will draft an email to the owning org</p>
+            <p className="text-xs text-gray-400 mt-0.5">The owning organization will review it in The Commons</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={18} />
@@ -126,7 +138,7 @@ export default function BorrowRequestModal({ item, onClose }: BorrowRequestModal
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-              Quantity Needed * <span className="font-normal text-gray-400">({item.quantity} available)</span>
+              Quantity Needed * <span className="font-normal text-gray-400">({item.quantity} total units)</span>
             </label>
             <input
               type="number"
@@ -152,6 +164,10 @@ export default function BorrowRequestModal({ item, onClose }: BorrowRequestModal
             />
           </div>
 
+          {error && (
+            <p className="text-sm text-red-600 rounded-xl bg-red-50 px-3 py-2">{error}</p>
+          )}
+
           <div className="flex gap-3 pt-1">
             <button
               type="button"
@@ -162,10 +178,11 @@ export default function BorrowRequestModal({ item, onClose }: BorrowRequestModal
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
               style={{ backgroundColor: '#8B0000' }}
             >
-              <Send size={14} /> Send Request
+              <Send size={14} /> {loading ? 'Sending…' : 'Send Request'}
             </button>
           </div>
         </form>
