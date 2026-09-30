@@ -1,10 +1,15 @@
 package com.thecommons.backend.inventory;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.thecommons.backend.organization.Organization;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -35,6 +40,10 @@ public class InventoryItem {
 
     @Column(nullable = false)
     private String organization;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id")
+    private Organization owningOrganization;
 
     @Column(nullable = false)
     private String location;
@@ -108,6 +117,15 @@ public class InventoryItem {
 
     public void setOrganization(String organization) {
         this.organization = organization;
+    }
+
+    @JsonIgnore
+    public Organization getOwningOrganization() {
+        return owningOrganization;
+    }
+
+    public void setOwningOrganization(Organization owningOrganization) {
+        this.owningOrganization = owningOrganization;
     }
 
     public String getLocation() {
