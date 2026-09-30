@@ -16,6 +16,10 @@ public interface BorrowingRequestRepository
                     Collection<Organization> lendingOrganizations,
                     Collection<Organization> borrowingOrganizations);
 
+    List<BorrowingRequest> findAllByOrderByCreatedAtDesc();
+
+    long countByStatus(BorrowingRequestStatus status);
+
     long countByLendingOrganizationInAndStatus(
             Collection<Organization> organizations,
             BorrowingRequestStatus status);
@@ -28,7 +32,9 @@ public interface BorrowingRequestRepository
             select coalesce(sum(request.quantity), 0)
             from BorrowingRequest request
             where request.inventoryItem = :item
-              and request.status = com.thecommons.backend.borrowing.BorrowingRequestStatus.APPROVED
+              and request.status = :status
             """)
-    Long sumApprovedQuantityByInventoryItem(@Param("item") InventoryItem item);
+    Long sumQuantityByInventoryItemAndStatus(
+            @Param("item") InventoryItem item,
+            @Param("status") BorrowingRequestStatus status);
 }
