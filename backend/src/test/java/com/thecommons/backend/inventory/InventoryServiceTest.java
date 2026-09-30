@@ -21,6 +21,8 @@ import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOut
 import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
 import com.thecommons.backend.organization.OrganizationAuthorizationService;
+import com.thecommons.backend.organization.Organization;
+import com.thecommons.backend.organization.OrganizationRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -40,6 +42,9 @@ class InventoryServiceTest {
 
     @Mock
     private OrganizationAuthorizationService authorizationService;
+
+    @Mock
+    private OrganizationRepository organizationRepository;
 
     @InjectMocks
     private InventoryService inventoryService;
@@ -81,6 +86,11 @@ class InventoryServiceTest {
 
         when(inventoryRepository.existsByQrCode("TEST-QR-001")).thenReturn(
                 false);
+        Organization organization = new Organization(
+                "Test organization",
+                "test-join-code-hash");
+        when(organizationRepository.findByNameIgnoreCase("Test organization"))
+                .thenReturn(Optional.of(organization));
         when(inventoryRepository.save(any(InventoryItem.class))).thenAnswer(
                 invocation -> invocation.getArgument(0));
 
@@ -89,6 +99,7 @@ class InventoryServiceTest {
                 request);
 
         assertEquals("TEST-QR-001", result.getQrCode());
+        assertSame(organization, result.getOwningOrganization());
         verify(authorizationService).requireCanManage(
                 "google-subject-123",
                 "Test organization");
@@ -202,6 +213,11 @@ class InventoryServiceTest {
                 true);
 
         when(inventoryRepository.findById(1L)).thenReturn(Optional.of(item));
+        Organization organization = new Organization(
+                "New organization",
+                "test-join-code-hash");
+        when(organizationRepository.findByNameIgnoreCase("New organization"))
+                .thenReturn(Optional.of(organization));
         when(inventoryRepository.save(any(InventoryItem.class))).thenAnswer(
                 invocation -> invocation.getArgument(0));
 
@@ -214,6 +230,7 @@ class InventoryServiceTest {
         assertEquals("New name", result.getName());
         assertEquals("New category", result.getCategory());
         assertEquals("New organization", result.getOrganization());
+        assertSame(organization, result.getOwningOrganization());
         assertEquals("New location", result.getLocation());
         assertEquals(5, result.getQuantity());
         assertEquals("New event", result.getLastUsed());

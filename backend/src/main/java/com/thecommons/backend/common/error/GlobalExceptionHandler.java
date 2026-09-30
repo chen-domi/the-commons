@@ -16,6 +16,7 @@ import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutExce
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
 import com.thecommons.backend.organization.InvalidOrganizationJoinCodeException;
 import com.thecommons.backend.organization.OrganizationAlreadyExistsException;
+import com.thecommons.backend.organization.OrganizationNotFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -62,6 +63,21 @@ public class GlobalExceptionHandler {
 
                 return ResponseEntity
                                 .status(HttpStatus.CONFLICT)
+                                .body(error);
+        }
+
+        @ExceptionHandler(OrganizationNotFoundException.class)
+        public ResponseEntity<ApiError> handleOrganizationNotFound(
+                        OrganizationNotFoundException exception) {
+
+                ApiError error = new ApiError(
+                                Instant.now(),
+                                HttpStatus.NOT_FOUND.value(),
+                                "ORGANIZATION_NOT_FOUND",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.NOT_FOUND)
                                 .body(error);
         }
 

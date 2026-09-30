@@ -11,19 +11,25 @@ import com.thecommons.backend.inventory.exception.DuplicateQrCodeException;
 import com.thecommons.backend.inventory.exception.InventoryItemAlreadyCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotCheckedOutException;
 import com.thecommons.backend.inventory.exception.InventoryItemNotFoundException;
+import com.thecommons.backend.organization.Organization;
 import com.thecommons.backend.organization.OrganizationAuthorizationService;
+import com.thecommons.backend.organization.OrganizationNotFoundException;
+import com.thecommons.backend.organization.OrganizationRepository;
 
 @Service
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final OrganizationAuthorizationService authorizationService;
+    private final OrganizationRepository organizationRepository;
 
     public InventoryService(
             InventoryRepository inventoryRepository,
-            OrganizationAuthorizationService authorizationService) {
+            OrganizationAuthorizationService authorizationService,
+            OrganizationRepository organizationRepository) {
         this.inventoryRepository = inventoryRepository;
         this.authorizationService = authorizationService;
+        this.organizationRepository = organizationRepository;
     }
 
     public List<InventoryItem> getAllItems(String googleSubject) {
@@ -52,14 +58,17 @@ public class InventoryService {
             throw new DuplicateQrCodeException(request.qrCode());
         }
 
+        Organization organization = findOrganization(request.organization());
+
         InventoryItem item = new InventoryItem(
                 request.qrCode(),
                 request.name(),
                 request.category(),
-                request.organization(),
+                organization.getName(),
                 request.location(),
                 request.quantity());
 
+        item.setOwningOrganization(organization);
         item.setLastUsed(request.lastUsed());
         item.setShared(request.shared());
 
@@ -87,15 +96,24 @@ public class InventoryService {
                 googleSubject,
                 request.organization());
 
+        Organization organization = findOrganization(request.organization());
+
         item.setName(request.name());
         item.setCategory(request.category());
-        item.setOrganization(request.organization());
+        item.setOrganization(organization.getName());
+        item.setOwningOrganization(organization);
         item.setLocation(request.location());
         item.setQuantity(request.quantity());
         item.setLastUsed(request.lastUsed());
         item.setShared(request.shared());
 
         return inventoryRepository.save(item);
+    }
+
+    private Organization findOrganization(String name) {
+        return organizationRepository
+                .findByNameIgnoreCase(name.trim())
+                .orElseThrow(() -> new OrganizationNotFoundException(name));
     }
 
     public InventoryItem checkoutItem(
