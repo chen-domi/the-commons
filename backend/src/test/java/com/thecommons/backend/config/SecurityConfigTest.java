@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.thecommons.backend.auth.BcOidcUserService;
+import com.thecommons.backend.borrowing.BorrowingRequestController;
+import com.thecommons.backend.borrowing.BorrowingRequestService;
 import com.thecommons.backend.inventory.InventoryController;
 import com.thecommons.backend.inventory.InventoryService;
 import java.util.List;
@@ -23,7 +25,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
-        value = InventoryController.class,
+        value = {InventoryController.class, BorrowingRequestController.class},
         properties = {
                 "spring.security.oauth2.client.registration.google.client-id=test-client-id",
                 "spring.security.oauth2.client.registration.google.client-secret=test-client-secret"
@@ -37,6 +39,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private InventoryService inventoryService;
+
+    @MockitoBean
+    private BorrowingRequestService borrowingRequestService;
 
     @MockitoBean
     private BcOidcUserService bcOidcUserService;
@@ -79,6 +84,20 @@ class SecurityConfigTest {
     @Test
     void inventoryMutationWithoutCsrfIsForbidden() throws Exception {
         mockMvc.perform(post("/api/inventory"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void borrowingRequestsRequireAuthentication() throws Exception {
+        mockMvc.perform(get("/api/borrowing-requests"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void borrowingMutationWithoutCsrfIsForbidden() throws Exception {
+        mockMvc.perform(post("/api/borrowing-requests")
+                        .with(oidcLogin().idToken(token ->
+                                token.subject("google-subject-123"))))
                 .andExpect(status().isForbidden());
     }
 }
