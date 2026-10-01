@@ -285,12 +285,12 @@ function MainApp() {
 
   type TabDef = { key: Tab; label: string; icon: React.ReactNode; count?: number; eboardOnly?: boolean };
   const tabs: TabDef[] = [
-    { key: 'club-inventory',   label: isAdmin && !adminIsActingAsOrganization ? 'All Organizations' : 'Your Inventory', icon: <Package size={15} />, count: clubItems.length },
-    { key: 'global-inventory', label: 'Global Inventory', icon: <Globe size={15} />,            count: globalItems.length },
-    { key: 'marketplace',      label: 'Marketplace',      icon: <ArrowLeftRight size={15} />,   count: items.filter((i) => i.shared).length },
-    { key: 'borrowing',        label: 'Borrowing',        icon: <ClipboardList size={15} />,    count: borrowingSummary.pendingIncomingRequests + borrowingSummary.approvedOutgoingBorrows },
-    { key: 'wanted',           label: 'Wanted',           icon: <Inbox size={15} />,            count: requestCount },
-    { key: 'leaderboard',      label: 'Leaderboard',      icon: <Trophy size={15} /> },
+    { key: 'club-inventory', label: isAdmin && !adminIsActingAsOrganization ? 'All Organizations' : 'Your Inventory', icon: <Package size={15} />, count: clubItems.length },
+    { key: 'global-inventory', label: 'Global Inventory', icon: <Globe size={15} />, count: globalItems.length },
+    { key: 'marketplace', label: 'Marketplace', icon: <ArrowLeftRight size={15} />, count: items.filter((i) => i.shared).length },
+    { key: 'borrowing', label: 'Borrowing', icon: <ClipboardList size={15} />, count: borrowingSummary.pendingIncomingRequests + borrowingSummary.approvedOutgoingBorrows },
+    { key: 'wanted', label: 'Wanted', icon: <Inbox size={15} />, count: requestCount },
+    { key: 'leaderboard', label: 'Leaderboard', icon: <Trophy size={15} /> },
   ];
 
   // Only show Settings tab for eboard / OSI admin
@@ -302,7 +302,7 @@ function MainApp() {
 
       {isAdmin && (
         <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold"
-          style={{ backgroundColor: '#8B0000', color: '#CFB87C' }}>
+          style={{ backgroundColor: '#CFB87C', color: '#8B0000' }}>
           <ShieldCheck size={13} />
           {adminIsActingAsOrganization
             ? `OSI Admin — acting as ${user?.currentOrg}`
@@ -345,49 +345,49 @@ function MainApp() {
 
           {/* Toolbar */}
           {activeTab !== 'wanted' && activeTab !== 'borrowing' && activeTab !== 'leaderboard' && (
-          <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/50 flex flex-wrap items-center gap-3">
-            {activeTab !== 'marketplace' && (
-              <div className="relative max-w-sm flex-1 min-w-[160px]">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="text" placeholder="Search items, orgs, categories…"
-                  value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent bg-white"
-                  style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties} />
-              </div>
-            )}
+            <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/50 flex flex-wrap items-center gap-3">
+              {activeTab !== 'marketplace' && (
+                <div className="relative max-w-sm flex-1 min-w-[160px]">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type="text" placeholder="Search items, orgs, categories…"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent bg-white"
+                    style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties} />
+                </div>
+              )}
 
-            {activeTab !== 'club-inventory' && (
-              <>
-                <Combobox
-                  options={allCategories}
-                  value={filterCategory}
-                  onChange={setFilterCategory}
-                  placeholder="All Categories"
-                  allOptionLabel="All Categories"
-                  className="min-w-[150px]"
-                  style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
-                />
-                <Combobox
-                  options={allOrgs}
-                  value={filterOrg}
-                  onChange={setFilterOrg}
-                  placeholder="All Organizations"
-                  allOptionLabel="All Organizations"
-                  className="min-w-[180px]"
-                  style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
-                />
-              </>
-            )}
+              {activeTab !== 'club-inventory' && (
+                <>
+                  <Combobox
+                    options={allCategories}
+                    value={filterCategory}
+                    onChange={setFilterCategory}
+                    placeholder="All Categories"
+                    allOptionLabel="All Categories"
+                    className="min-w-[150px]"
+                    style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
+                  />
+                  <Combobox
+                    options={allOrgs}
+                    value={filterOrg}
+                    onChange={setFilterOrg}
+                    placeholder="All Organizations"
+                    allOptionLabel="All Organizations"
+                    className="min-w-[180px]"
+                    style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
+                  />
+                </>
+              )}
 
-            {canAdd && activeTab === 'club-inventory' && (
-              <button onClick={() => { setEditingItem(null); setShowAddItem(true); }}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 flex-shrink-0"
-                style={{ backgroundColor: '#8B0000' }}>
-                <Plus size={15} />
-                Add Item
-              </button>
-            )}
-          </div>
+              {canAdd && activeTab === 'club-inventory' && (
+                <button onClick={() => { setEditingItem(null); setShowAddItem(true); }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 flex-shrink-0"
+                  style={{ backgroundColor: '#8B0000' }}>
+                  <Plus size={15} />
+                  Add Item
+                </button>
+              )}
+            </div>
           )}
 
           {/* Content */}
