@@ -299,7 +299,7 @@ function MainApp() {
 
       {isAdmin && (
         <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold"
-          style={{ backgroundColor: '#CFB87C', color: '#1a2744' }}>
+          style={{ backgroundColor: '#8B0000', color: '#CFB87C' }}>
           <ShieldCheck size={13} />
           {adminIsActingAsOrganization
             ? `OSI Admin — acting as ${user?.currentOrg}`
