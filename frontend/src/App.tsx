@@ -28,6 +28,23 @@ import { BorrowingNotificationSummary, InventoryItem, ScanResult } from './types
 
 type Tab = 'club-inventory' | 'global-inventory' | 'marketplace' | 'borrowing' | 'wanted' | 'leaderboard';
 
+const TAB_STORAGE_KEY = 'commons.activeTab';
+const VALID_TABS: readonly Tab[] = [
+  'club-inventory',
+  'global-inventory',
+  'marketplace',
+  'borrowing',
+  'wanted',
+  'leaderboard',
+];
+
+function getInitialTab(): Tab {
+  const savedTab = sessionStorage.getItem(TAB_STORAGE_KEY);
+  return VALID_TABS.includes(savedTab as Tab)
+    ? savedTab as Tab
+    : 'club-inventory';
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -60,7 +77,7 @@ function MainApp() {
   const [loadingItems, setLoadingItems] = useState(true);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
   const [inventoryActionError, setInventoryActionError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('club-inventory');
+  const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [checkedOutItems, setCheckedOutItems] = useState<string[]>([]);
@@ -90,7 +107,12 @@ function MainApp() {
   }, [scanResult]);
 
   // Reset search and filters on tab change
-  useEffect(() => { setSearchTerm(''); setFilterCategory(''); setFilterOrg(''); }, [activeTab]);
+  useEffect(() => {
+    sessionStorage.setItem(TAB_STORAGE_KEY, activeTab);
+    setSearchTerm('');
+    setFilterCategory('');
+    setFilterOrg('');
+  }, [activeTab]);
 
   useEffect(() => {
     let cancelled = false;
