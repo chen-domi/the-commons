@@ -42,9 +42,10 @@ export default function BorrowingActivity({ onSummaryChanged }: BorrowingActivit
     return () => { cancelled = true; };
   }, []);
 
+  const isGlobalAdminView =
+    !!user?.isOSIAdmin && (!user.currentOrg || user.currentOrg === 'OSI');
   const canManage = (organization: string) =>
-    !!user?.isOSIAdmin ||
-    !!user?.organizations.some((membership) => membership.org === organization);
+    isGlobalAdminView || user?.currentOrg === organization;
 
   async function transition(
     request: BorrowingRequest,
