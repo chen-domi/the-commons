@@ -74,9 +74,10 @@ function MainApp() {
   });
 
   const isAdmin = !!user?.isOSIAdmin;
+  const adminIsActingAsOrganization = isAdmin && !!user?.currentOrg && user.currentOrg !== 'OSI';
   // Role is stored in localStorage after PIN entry — scoped to the current session's org
   const currentRole = localStorage.getItem('currentRole') as 'eboard' | null;
-  const canAdd = isAdmin || currentRole === 'eboard';
+  const canAdd = isAdmin ? adminIsActingAsOrganization : currentRole === 'eboard';
 
   // Auto-close scanner 2s after scan
   useEffect(() => {
@@ -274,12 +275,14 @@ function MainApp() {
   const allOrgs = Array.from(new Set(items.map((i) => i.org))).sort();
 
   // Club inventory = own org (or all for admin)
-  const clubItems = isAdmin ? items : items.filter((i) => i.org === user?.currentOrg);
+  const clubItems = isAdmin && !adminIsActingAsOrganization
+    ? items
+    : items.filter((i) => i.org === user?.currentOrg);
   const globalItems = items;
 
   type TabDef = { key: Tab; label: string; icon: React.ReactNode; count?: number; eboardOnly?: boolean };
   const tabs: TabDef[] = [
-    { key: 'club-inventory',   label: isAdmin ? 'All Organizations' : 'Your Inventory', icon: <Package size={15} />, count: clubItems.length },
+    { key: 'club-inventory',   label: isAdmin && !adminIsActingAsOrganization ? 'All Organizations' : 'Your Inventory', icon: <Package size={15} />, count: clubItems.length },
     { key: 'global-inventory', label: 'Global Inventory', icon: <Globe size={15} />,            count: globalItems.length },
     { key: 'marketplace',      label: 'Marketplace',      icon: <ArrowLeftRight size={15} />,   count: items.filter((i) => i.shared).length },
     { key: 'borrowing',        label: 'Borrowing',        icon: <ClipboardList size={15} />,    count: borrowingSummary.pendingIncomingRequests + borrowingSummary.approvedOutgoingBorrows },
@@ -298,7 +301,9 @@ function MainApp() {
         <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold"
           style={{ backgroundColor: '#CFB87C', color: '#1a2744' }}>
           <ShieldCheck size={13} />
-          OSI Admin — viewing all organizations
+          {adminIsActingAsOrganization
+            ? `OSI Admin — acting as ${user?.currentOrg}`
+            : 'OSI Admin — viewing all organizations'}
         </div>
       )}
 

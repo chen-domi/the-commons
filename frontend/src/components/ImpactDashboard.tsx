@@ -164,14 +164,17 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, onGoToBorrowing, onScanClick, notificationSummary }: ImpactDashboardProps) {
-  const { user } = useAuth();
+  const { user, switchOrg } = useAuth();
   const [showOrgManager, setShowOrgManager] = useState(false);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(false);
   const [organizationsError, setOrganizationsError] = useState('');
   const [showOrganizations, setShowOrganizations] = useState(false);
   const isAdmin = !!user?.isOSIAdmin;
-  const canAdd = isAdmin || user?.organizations.find((o) => o.org === user.currentOrg)?.role === 'eboard';
+  const adminIsActingAsOrganization = isAdmin && !!user?.currentOrg && user.currentOrg !== 'OSI';
+  const canAdd = isAdmin
+    ? adminIsActingAsOrganization
+    : user?.organizations.find((o) => o.org === user.currentOrg)?.role === 'eboard';
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -198,7 +201,9 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
     return () => { cancelled = true; };
   }, [isAdmin]);
 
-  const myItems = isAdmin ? items : items.filter((i) => i.org === user?.currentOrg);
+  const myItems = isAdmin && !adminIsActingAsOrganization
+    ? items
+    : items.filter((i) => i.org === user?.currentOrg);
   const myShared = myItems.filter((i) => i.shared);
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
@@ -226,7 +231,9 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
                 className="flex items-center gap-1.5 text-sm font-bold text-gray-700 truncate flex-1 min-w-0 text-left"
                 aria-expanded={showOrganizations}
               >
-                <span className="truncate">All Organizations</span>
+                <span className="truncate">
+                  {adminIsActingAsOrganization ? user?.currentOrg : 'All Organizations'}
+                </span>
                 <ChevronDown
                   size={15}
                   className={`flex-shrink-0 text-gray-400 transition-transform ${showOrganizations ? 'rotate-180' : ''}`}
@@ -258,12 +265,22 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
                   <p className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     {organizations.length} registered
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => { switchOrg('OSI'); setShowOrganizations(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-50 text-left"
+                  >
+                    <Building2 size={14} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-700 truncate">All Organizations</span>
+                  </button>
                   {organizations.map((organization) => (
-                    <div key={organization.id}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-50">
+                    <button key={organization.id}
+                      type="button"
+                      onClick={() => { switchOrg(organization.name); setShowOrganizations(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-50 text-left">
                       <Building2 size={14} className="text-gray-400 flex-shrink-0" />
                       <span className="text-sm font-medium text-gray-700 truncate">{organization.name}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

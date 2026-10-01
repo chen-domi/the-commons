@@ -47,7 +47,7 @@ export default function AddItemModal({ item, nextId, onSave, onClose }: AddItemM
   const [qrCode, setQrCode] = useState(item?.qrCode ?? '');
   const [qrTouched, setQrTouched] = useState(editing);
 
-  const org = user?.currentOrg ?? '';
+  const org = item?.org ?? user?.currentOrg ?? '';
 
   const inputClass = 'w-full px-3.5 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent bg-white';
   const ring = { '--tw-ring-color': '#8B0000' } as React.CSSProperties;
