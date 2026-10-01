@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle, Building2, ChevronDown } from 'lucide-react';
-import { InventoryItem } from '../types';
+import { BorrowingNotificationSummary, InventoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getOrganizations, OrganizationSummary } from '../api/organizationApi';
 import Combobox from './Combobox';
@@ -9,7 +9,9 @@ interface ImpactDashboardProps {
   items: InventoryItem[];
   onAddItem: () => void;
   onGoToMarketplace: () => void;
+  onGoToBorrowing: () => void;
   onScanClick: () => void;
+  notificationSummary: BorrowingNotificationSummary;
 }
 
 function OrgManagerModal({ onClose }: { onClose: () => void }) {
@@ -161,15 +163,18 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, onScanClick }: ImpactDashboardProps) {
-  const { user } = useAuth();
+export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, onGoToBorrowing, onScanClick, notificationSummary }: ImpactDashboardProps) {
+  const { user, switchOrg } = useAuth();
   const [showOrgManager, setShowOrgManager] = useState(false);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(false);
   const [organizationsError, setOrganizationsError] = useState('');
   const [showOrganizations, setShowOrganizations] = useState(false);
   const isAdmin = !!user?.isOSIAdmin;
-  const canAdd = isAdmin || user?.organizations.find((o) => o.org === user.currentOrg)?.role === 'eboard';
+  const adminIsActingAsOrganization = isAdmin && !!user?.currentOrg && user.currentOrg !== 'OSI';
+  const canAdd = isAdmin
+    ? adminIsActingAsOrganization
+    : user?.organizations.find((o) => o.org === user.currentOrg)?.role === 'eboard';
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -196,15 +201,16 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
     return () => { cancelled = true; };
   }, [isAdmin]);
 
-  const myItems = isAdmin ? items : items.filter((i) => i.org === user?.currentOrg);
+  const myItems = isAdmin && !adminIsActingAsOrganization
+    ? items
+    : items.filter((i) => i.org === user?.currentOrg);
   const myShared = myItems.filter((i) => i.shared);
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   const tipItem = myItems.find((i) => !i.shared && (!i.createdAt || new Date(i.createdAt) <= threeMonthsAgo)) ?? null;
 
-  // Demo notification counts
-  const pendingRequests = 2;
-  const approvedBorrows = 1;
+  const pendingRequests = notificationSummary.pendingIncomingRequests;
+  const approvedBorrows = notificationSummary.approvedOutgoingBorrows;
 
   return (
     <div className="mb-6 space-y-3">
@@ -225,7 +231,9 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
                 className="flex items-center gap-1.5 text-sm font-bold text-gray-700 truncate flex-1 min-w-0 text-left"
                 aria-expanded={showOrganizations}
               >
-                <span className="truncate">All Organizations</span>
+                <span className="truncate">
+                  {adminIsActingAsOrganization ? user?.currentOrg : 'All Organizations'}
+                </span>
                 <ChevronDown
                   size={15}
                   className={`flex-shrink-0 text-gray-400 transition-transform ${showOrganizations ? 'rotate-180' : ''}`}
@@ -257,12 +265,22 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
                   <p className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     {organizations.length} registered
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => { switchOrg('OSI'); setShowOrganizations(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-50 text-left"
+                  >
+                    <Building2 size={14} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-700 truncate">All Organizations</span>
+                  </button>
                   {organizations.map((organization) => (
-                    <div key={organization.id}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-50">
+                    <button key={organization.id}
+                      type="button"
+                      onClick={() => { switchOrg(organization.name); setShowOrganizations(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-50 text-left">
                       <Building2 size={14} className="text-gray-400 flex-shrink-0" />
                       <span className="text-sm font-medium text-gray-700 truncate">{organization.name}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -298,7 +316,7 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
               </span>
             </div>
           </div>
-          <button onClick={onGoToMarketplace}
+          <button onClick={onGoToBorrowing}
             className="mt-3 pt-3 border-t border-gray-100 w-full text-left text-xs font-semibold transition-colors hover:opacity-70"
             style={{ color: '#8B0000' }}>
             View all activity →
@@ -322,7 +340,7 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
                 <Plus size={14} /> Add item
               </button>
             )}
-            <button onClick={onGoToMarketplace}
+            <button onClick={onGoToBorrowing}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
               <ArrowLeftRight size={14} /> View requests
             </button>

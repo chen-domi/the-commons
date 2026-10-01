@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Package, Recycle, ArrowLeftRight, Plus, Globe, Inbox, ShieldCheck, Trophy } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Package, Recycle, ArrowLeftRight, Plus, Globe, Inbox, ShieldCheck, Trophy, ClipboardList } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
@@ -22,9 +22,11 @@ import LoginPage from './components/LoginPage';
 import AddItemModal from './components/AddItemModal';
 import CheckoutDetailsModal from './components/CheckoutDetailsModal';
 import Leaderboard from './components/Leaderboard';
-import { InventoryItem, ScanResult } from './types';
+import BorrowingActivity from './components/BorrowingActivity';
+import { getBorrowingNotificationSummary } from './api/borrowingApi';
+import { BorrowingNotificationSummary, InventoryItem, ScanResult } from './types';
 
-type Tab = 'club-inventory' | 'global-inventory' | 'marketplace' | 'wanted' | 'leaderboard';
+type Tab = 'club-inventory' | 'global-inventory' | 'marketplace' | 'borrowing' | 'wanted' | 'leaderboard';
 
 export default function App() {
   return (
@@ -38,8 +40,11 @@ function AppInner() {
   const { user, loading, needsOrgSelection } = useAuth();
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#6B0000' }}>
-      <div className="w-10 h-10 rounded-full border-4 border-white/20 border-t-white animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f8f4ee' }}>
+      <div
+        className="w-9 h-9 rounded-full border-4 animate-spin"
+        style={{ borderColor: '#eadfce', borderTopColor: '#8B0000' }}
+      />
     </div>
   );
 
@@ -66,11 +71,16 @@ function MainApp() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterOrg, setFilterOrg] = useState('');
   const [requestCount, setRequestCount] = useState(0);
+  const [borrowingSummary, setBorrowingSummary] = useState<BorrowingNotificationSummary>({
+    pendingIncomingRequests: 0,
+    approvedOutgoingBorrows: 0,
+  });
 
   const isAdmin = !!user?.isOSIAdmin;
+  const adminIsActingAsOrganization = isAdmin && !!user?.currentOrg && user.currentOrg !== 'OSI';
   // Role is stored in localStorage after PIN entry — scoped to the current session's org
   const currentRole = localStorage.getItem('currentRole') as 'eboard' | null;
-  const canAdd = isAdmin || currentRole === 'eboard';
+  const canAdd = isAdmin ? adminIsActingAsOrganization : currentRole === 'eboard';
 
   // Auto-close scanner 2s after scan
   useEffect(() => {
@@ -112,6 +122,18 @@ function MainApp() {
   useEffect(() => {
     setRequestCount(localData.getRequests().length);
   }, []);
+
+  const loadBorrowingSummary = useCallback(async () => {
+    try {
+      setBorrowingSummary(await getBorrowingNotificationSummary());
+    } catch {
+      setBorrowingSummary({ pendingIncomingRequests: 0, approvedOutgoingBorrows: 0 });
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBorrowingSummary();
+  }, [loadBorrowingSummary]);
 
   const handleSaveItem = async (saved: InventoryItem) => {
     const isNew = !items.some((i) => i.id === saved.id);
@@ -256,16 +278,19 @@ function MainApp() {
   const allOrgs = Array.from(new Set(items.map((i) => i.org))).sort();
 
   // Club inventory = own org (or all for admin)
-  const clubItems = isAdmin ? items : items.filter((i) => i.org === user?.currentOrg);
+  const clubItems = isAdmin && !adminIsActingAsOrganization
+    ? items
+    : items.filter((i) => i.org === user?.currentOrg);
   const globalItems = items;
 
   type TabDef = { key: Tab; label: string; icon: React.ReactNode; count?: number; eboardOnly?: boolean };
   const tabs: TabDef[] = [
-    { key: 'club-inventory',   label: isAdmin ? 'All Organizations' : 'Your Inventory', icon: <Package size={15} />, count: clubItems.length },
-    { key: 'global-inventory', label: 'Global Inventory', icon: <Globe size={15} />,            count: globalItems.length },
-    { key: 'marketplace',      label: 'Marketplace',      icon: <ArrowLeftRight size={15} />,   count: items.filter((i) => i.shared).length },
-    { key: 'wanted',           label: 'Wanted',           icon: <Inbox size={15} />,            count: requestCount },
-    { key: 'leaderboard',      label: 'Leaderboard',      icon: <Trophy size={15} /> },
+    { key: 'club-inventory', label: isAdmin && !adminIsActingAsOrganization ? 'All Organizations' : 'Your Inventory', icon: <Package size={15} />, count: clubItems.length },
+    { key: 'global-inventory', label: 'Global Inventory', icon: <Globe size={15} />, count: globalItems.length },
+    { key: 'marketplace', label: 'Marketplace', icon: <ArrowLeftRight size={15} />, count: items.filter((i) => i.shared).length },
+    { key: 'borrowing', label: 'Borrowing', icon: <ClipboardList size={15} />, count: borrowingSummary.pendingIncomingRequests + borrowingSummary.approvedOutgoingBorrows },
+    { key: 'wanted', label: 'Wanted', icon: <Inbox size={15} />, count: requestCount },
+    { key: 'leaderboard', label: 'Leaderboard', icon: <Trophy size={15} /> },
   ];
 
   // Only show Settings tab for eboard / OSI admin
@@ -277,9 +302,11 @@ function MainApp() {
 
       {isAdmin && (
         <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold"
-          style={{ backgroundColor: '#CFB87C', color: '#1a2744' }}>
+          style={{ backgroundColor: '#CFB87C', color: '#8B0000' }}>
           <ShieldCheck size={13} />
-          OSI Admin — viewing all organizations
+          {adminIsActingAsOrganization
+            ? `OSI Admin — acting as ${user?.currentOrg}`
+            : 'OSI Admin — viewing all organizations'}
         </div>
       )}
 
@@ -288,7 +315,9 @@ function MainApp() {
           items={items}
           onAddItem={() => { setActiveTab('club-inventory'); setEditingItem(null); setShowAddItem(true); }}
           onGoToMarketplace={() => setActiveTab('marketplace')}
+          onGoToBorrowing={() => setActiveTab('borrowing')}
           onScanClick={() => { setScanResult(null); setShowScanner(true); }}
+          notificationSummary={borrowingSummary}
         />
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -315,50 +344,50 @@ function MainApp() {
           </div>
 
           {/* Toolbar */}
-          {activeTab !== 'wanted' && activeTab !== 'leaderboard' && (
-          <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/50 flex flex-wrap items-center gap-3">
-            {activeTab !== 'marketplace' && (
-              <div className="relative max-w-sm flex-1 min-w-[160px]">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="text" placeholder="Search items, orgs, categories…"
-                  value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent bg-white"
-                  style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties} />
-              </div>
-            )}
+          {activeTab !== 'wanted' && activeTab !== 'borrowing' && activeTab !== 'leaderboard' && (
+            <div className="px-5 py-4 border-b border-gray-50 bg-gray-50/50 flex flex-wrap items-center gap-3">
+              {activeTab !== 'marketplace' && (
+                <div className="relative max-w-sm flex-1 min-w-[160px]">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type="text" placeholder="Search items, orgs, categories…"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent bg-white"
+                    style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties} />
+                </div>
+              )}
 
-            {activeTab !== 'club-inventory' && (
-              <>
-                <Combobox
-                  options={allCategories}
-                  value={filterCategory}
-                  onChange={setFilterCategory}
-                  placeholder="All Categories"
-                  allOptionLabel="All Categories"
-                  className="min-w-[150px]"
-                  style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
-                />
-                <Combobox
-                  options={allOrgs}
-                  value={filterOrg}
-                  onChange={setFilterOrg}
-                  placeholder="All Organizations"
-                  allOptionLabel="All Organizations"
-                  className="min-w-[180px]"
-                  style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
-                />
-              </>
-            )}
+              {activeTab !== 'club-inventory' && (
+                <>
+                  <Combobox
+                    options={allCategories}
+                    value={filterCategory}
+                    onChange={setFilterCategory}
+                    placeholder="All Categories"
+                    allOptionLabel="All Categories"
+                    className="min-w-[150px]"
+                    style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
+                  />
+                  <Combobox
+                    options={allOrgs}
+                    value={filterOrg}
+                    onChange={setFilterOrg}
+                    placeholder="All Organizations"
+                    allOptionLabel="All Organizations"
+                    className="min-w-[180px]"
+                    style={{ '--tw-ring-color': '#CFB87C' } as React.CSSProperties}
+                  />
+                </>
+              )}
 
-            {canAdd && activeTab === 'club-inventory' && (
-              <button onClick={() => { setEditingItem(null); setShowAddItem(true); }}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 flex-shrink-0"
-                style={{ backgroundColor: '#8B0000' }}>
-                <Plus size={15} />
-                Add Item
-              </button>
-            )}
-          </div>
+              {canAdd && activeTab === 'club-inventory' && (
+                <button onClick={() => { setEditingItem(null); setShowAddItem(true); }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 flex-shrink-0"
+                  style={{ backgroundColor: '#8B0000' }}>
+                  <Plus size={15} />
+                  Add Item
+                </button>
+              )}
+            </div>
           )}
 
           {/* Content */}
@@ -403,7 +432,19 @@ function MainApp() {
                   />
                 )}
                 {activeTab === 'marketplace' && (
-                  <SharingMarketplace items={items} checkedOutItems={checkedOutItems} filterCategory={filterCategory} filterOrg={filterOrg} />
+                  <SharingMarketplace
+                    items={items}
+                    checkedOutItems={checkedOutItems}
+                    filterCategory={filterCategory}
+                    filterOrg={filterOrg}
+                    onRequestCreated={() => {
+                      loadBorrowingSummary();
+                      setActiveTab('borrowing');
+                    }}
+                  />
+                )}
+                {activeTab === 'borrowing' && (
+                  <BorrowingActivity onSummaryChanged={loadBorrowingSummary} />
                 )}
                 {activeTab === 'wanted' && (
                   <RequestsBoard

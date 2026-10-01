@@ -39,6 +39,38 @@ export interface ItemRequest {
   createdAt: string;
 }
 
+export type BorrowingRequestStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'DENIED'
+  | 'CANCELLED'
+  | 'RETURNED';
+
+export interface BorrowingRequest {
+  id: number;
+  inventoryItemId: number;
+  itemName: string;
+  qrCode: string;
+  lendingOrganization: string;
+  borrowingOrganization: string;
+  quantity: number;
+  purpose: string;
+  startDate: string;
+  dueDate: string;
+  status: BorrowingRequestStatus;
+  requestedByName: string;
+  reviewedByName: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  cancelledAt: string | null;
+  returnedAt: string | null;
+}
+
+export interface BorrowingNotificationSummary {
+  pendingIncomingRequests: number;
+  approvedOutgoingBorrows: number;
+}
+
 export interface ScanResult {
   item: InventoryItem;
   action: 'Checked Out' | 'Checked In';
