@@ -31,3 +31,6 @@ spring:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+server:
+  forward-headers-strategy: framework
