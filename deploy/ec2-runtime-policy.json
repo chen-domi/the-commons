@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadProductionParameters",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+      ],
+      "Resource": [
+        "arn:aws:ssm:us-east-1:223455088185:parameter/the-commons/production",
+        "arn:aws:ssm:us-east-1:223455088185:parameter/the-commons/production/*"
+      ]
+    }
+  ]
+}
