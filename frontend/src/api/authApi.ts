@@ -3,6 +3,7 @@ export interface AuthenticatedUser {
   email: string;
   pictureUrl: string | null;
   globalRole: 'USER' | 'ADMIN';
+  previewOrganization?: string | null;
 }
 
 export interface CsrfToken {
@@ -38,4 +39,15 @@ export async function endCurrentSession(): Promise<void> {
   });
 
   if (!response.ok) throw new Error('Could not sign out');
+}
+
+export async function setEboardPreview(organizationName: string | null): Promise<void> {
+  const csrf = await getCsrfToken();
+  const response = await fetch('/api/auth/preview', {
+    method: organizationName === null ? 'DELETE' : 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
+    ...(organizationName === null ? {} : { body: JSON.stringify({ organizationName }) }),
+  });
+  if (!response.ok) throw new Error('Could not change e-board preview mode. Please try again.');
 }

@@ -19,6 +19,12 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
+    public Organization getByName(String name) {
+        return organizationRepository.findByNameIgnoreCase(name.trim())
+                .orElseThrow(() -> new OrganizationNotFoundException(name));
+    }
+
+    @Transactional(readOnly = true)
     public List<Organization> getAllOrganizations() {
         return organizationRepository.findAllByOrderByNameAsc();
     }

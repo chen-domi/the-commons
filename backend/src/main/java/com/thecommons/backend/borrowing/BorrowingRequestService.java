@@ -1,9 +1,9 @@
 package com.thecommons.backend.borrowing;
 
 import com.thecommons.backend.auth.AppUser;
+import com.thecommons.backend.auth.AdminPreviewSession;
 import com.thecommons.backend.auth.AppUserRepository;
 import com.thecommons.backend.auth.AuthenticatedUserNotFoundException;
-import com.thecommons.backend.auth.GlobalRole;
 import com.thecommons.backend.borrowing.dto.BorrowingNotificationSummary;
 import com.thecommons.backend.borrowing.dto.BorrowingRequestResponse;
 import com.thecommons.backend.borrowing.dto.CreateBorrowingRequest;
@@ -98,14 +98,10 @@ public class BorrowingRequestService {
         authorizationService.requireApplicationAccess(googleSubject);
 
         List<BorrowingRequest> requests;
-        if (user.getGlobalRole() == GlobalRole.ADMIN) {
+        if (AdminPreviewSession.isEffectiveAdmin(user)) {
             requests = borrowingRequestRepository.findAllByOrderByCreatedAtDesc();
         } else {
-            List<Organization> organizations = membershipRepository
-                    .findAllByUser(user)
-                    .stream()
-                    .map(membership -> membership.getOrganization())
-                    .toList();
+            List<Organization> organizations = visibleOrganizations(user);
             requests = organizations.isEmpty()
                     ? List.of()
                     : borrowingRequestRepository
@@ -182,7 +178,7 @@ public class BorrowingRequestService {
         AppUser user = findUser(googleSubject);
         authorizationService.requireApplicationAccess(googleSubject);
 
-        if (user.getGlobalRole() == GlobalRole.ADMIN) {
+        if (AdminPreviewSession.isEffectiveAdmin(user)) {
             return new BorrowingNotificationSummary(
                     borrowingRequestRepository.countByStatus(
                             BorrowingRequestStatus.PENDING),
@@ -190,11 +186,7 @@ public class BorrowingRequestService {
                             BorrowingRequestStatus.APPROVED));
         }
 
-        List<Organization> organizations = membershipRepository
-                .findAllByUser(user)
-                .stream()
-                .map(membership -> membership.getOrganization())
-                .toList();
+        List<Organization> organizations = visibleOrganizations(user);
         if (organizations.isEmpty()) {
             return new BorrowingNotificationSummary(0, 0);
         }
@@ -206,6 +198,12 @@ public class BorrowingRequestService {
                 borrowingRequestRepository.countByBorrowingOrganizationInAndStatus(
                         organizations,
                         BorrowingRequestStatus.APPROVED));
+    }
+
+    private List<Organization> visibleOrganizations(AppUser user) {
+        String preview = AdminPreviewSession.organization(user);
+        return preview != null ? List.of(findOrganization(preview)) : membershipRepository
+                .findAllByUser(user).stream().map(membership -> membership.getOrganization()).toList();
     }
 
     private AppUser findUser(String googleSubject) {

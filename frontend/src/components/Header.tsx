@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Package, MapPin, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getOrganizations } from '../api/organizationApi';
+import { setEboardPreview } from '../api/authApi';
 
 export default function Header() {
   const { user, logout, switchOrg } = useAuth();
@@ -9,6 +10,22 @@ export default function Header() {
   const isAdmin = !!user?.isOSIAdmin;
   const orgs = user?.organizations ?? [];
   const [adminOrganizations, setAdminOrganizations] = useState<string[]>([]);
+  const [changingPreview, setChangingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+
+  async function changePreview(organization: string | null) {
+    setChangingPreview(true);
+    setPreviewError('');
+    try {
+      await setEboardPreview(organization);
+      localStorage.setItem('currentOrg', organization || 'OSI');
+      // Reload all role-dependent data so admin results cannot linger in preview.
+      window.location.reload();
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : 'Could not switch mode');
+      setChangingPreview(false);
+    }
+  }
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -28,6 +45,25 @@ export default function Header() {
       ? 'linear-gradient(135deg, #CFB87C 0%, #bca466 100%)'
       : 'linear-gradient(135deg, #8B0000 0%, #5a0000 100%)' }}>
       <div className="max-w-6xl mx-auto px-4 py-5">
+        {user?.previewOrganization && (
+          <div className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3" role="status">
+            <span>Viewing as e-board — {user.previewOrganization}. Changes affect real data.</span>
+            <button disabled={changingPreview} onClick={() => changePreview(null)}
+              className="font-bold underline disabled:opacity-50">
+              {changingPreview ? 'Switching…' : 'Return to admin'}
+            </button>
+          </div>
+        )}
+        {previewError && <p role="alert" className="mb-3 rounded-lg bg-white p-3 text-sm text-red-700">{previewError}</p>}
+        {isAdmin && user?.currentOrg && user.currentOrg !== 'OSI' && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-red-950">
+            <button disabled={changingPreview} onClick={() => changePreview(user.currentOrg)}
+              className="rounded-lg bg-white px-3 py-2 font-bold disabled:opacity-50">
+              {changingPreview ? 'Switching…' : `View as e-board — ${user.currentOrg}`}
+            </button>
+            <span>Uses e-board permissions; changes affect real data.</span>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           {/* Title block */}
           <div>

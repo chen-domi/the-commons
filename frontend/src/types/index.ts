@@ -26,6 +26,7 @@ export interface AuthUser {
   }>;
   currentOrg: string;
   isOSIAdmin: boolean;
+  previewOrganization?: string | null;
 }
 
 export interface ItemRequest {

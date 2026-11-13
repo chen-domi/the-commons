@@ -8,6 +8,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.thecommons.backend.auth.AppUser;
+import com.thecommons.backend.auth.AdminPreviewSession;
+import com.thecommons.backend.auth.GlobalRole;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import com.thecommons.backend.auth.AppUserRepository;
 import com.thecommons.backend.borrowing.dto.BorrowingRequestResponse;
 import com.thecommons.backend.borrowing.dto.CreateBorrowingRequest;
@@ -27,6 +34,26 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class BorrowingRequestServiceTest {
+    @AfterEach void clearPreview() { RequestContextHolder.resetRequestAttributes(); }
+
+    @Test void previewScopesRequestListAndNotificationCountsToSelectedOrganization() {
+        requester.changeGlobalRole(GlobalRole.ADMIN);
+        var request = new MockHttpServletRequest();
+        request.getSession().setAttribute(AdminPreviewSession.KEY,
+                new AdminPreviewSession.Preview("requester-subject", "Borrower"));
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        when(appUserRepository.findByGoogleSubject("requester-subject")).thenReturn(Optional.of(requester));
+        when(organizationRepository.findByNameIgnoreCase("Borrower")).thenReturn(Optional.of(borrower));
+        when(borrowingRequestRepository.findAllByLendingOrganizationInOrBorrowingOrganizationInOrderByCreatedAtDesc(
+                List.of(borrower), List.of(borrower))).thenReturn(List.of());
+        assertEquals(List.of(), service.getVisibleRequests("requester-subject"));
+        service.getNotificationSummary("requester-subject");
+        verify(borrowingRequestRepository).countByLendingOrganizationInAndStatus(List.of(borrower), BorrowingRequestStatus.PENDING);
+        verify(borrowingRequestRepository).countByBorrowingOrganizationInAndStatus(List.of(borrower), BorrowingRequestStatus.APPROVED);
+        verify(borrowingRequestRepository, never()).findAllByOrderByCreatedAtDesc();
+        verify(borrowingRequestRepository, never()).countByStatus(any());
+        verify(membershipRepository, never()).findAllByUser(any());
+    }
 
     @Mock private BorrowingRequestRepository borrowingRequestRepository;
     @Mock private InventoryRepository inventoryRepository;

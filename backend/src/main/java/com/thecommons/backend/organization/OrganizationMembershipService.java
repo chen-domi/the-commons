@@ -1,6 +1,8 @@
 package com.thecommons.backend.organization;
 
 import com.thecommons.backend.auth.AppUser;
+import com.thecommons.backend.auth.AdminPreviewSession;
+import org.springframework.security.access.AccessDeniedException;
 import com.thecommons.backend.auth.AppUserRepository;
 import com.thecommons.backend.auth.AuthenticatedUserNotFoundException;
 import java.util.List;
@@ -32,6 +34,9 @@ public class OrganizationMembershipService {
                 .findByGoogleSubject(googleSubject)
                 .orElseThrow(AuthenticatedUserNotFoundException::new);
 
+        if (AdminPreviewSession.organization(user) != null) {
+            throw new AccessDeniedException("Exit e-board preview before changing memberships");
+        }
         Organization organization = organizationService
                 .verifyJoinCode(organizationName, joinCode);
 
@@ -47,6 +52,10 @@ public class OrganizationMembershipService {
                 .findByGoogleSubject(googleSubject)
                 .orElseThrow(AuthenticatedUserNotFoundException::new);
 
+        String preview = AdminPreviewSession.organization(user);
+        if (preview != null) {
+            return List.of(new OrganizationMembership(user, organizationService.getByName(preview)));
+        }
         return membershipRepository.findAllByUser(user);
     }
 
@@ -58,6 +67,9 @@ public class OrganizationMembershipService {
                 .findByGoogleSubject(googleSubject)
                 .orElseThrow(AuthenticatedUserNotFoundException::new);
 
+        if (AdminPreviewSession.organization(user) != null) {
+            throw new AccessDeniedException("Exit e-board preview before changing memberships");
+        }
         membershipRepository.deleteByUserAndOrganization_NameIgnoreCase(
                 user,
                 organizationName.trim());
