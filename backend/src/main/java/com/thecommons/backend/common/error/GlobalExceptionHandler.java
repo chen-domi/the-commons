@@ -25,6 +25,12 @@ import com.thecommons.backend.organization.OrganizationNotFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+        @ExceptionHandler(com.thecommons.backend.nlp.NlpException.class)
+        public ResponseEntity<ApiError> handleNlp(com.thecommons.backend.nlp.NlpException exception) {
+                return ResponseEntity.status(exception.status()).body(new ApiError(
+                                Instant.now(), exception.status().value(), "NLP_REQUEST_FAILED", exception.getMessage()));
+        }
+
         @ExceptionHandler(BorrowingRequestNotFoundException.class)
         public ResponseEntity<ApiError> handleBorrowingRequestNotFound(
                         BorrowingRequestNotFoundException exception) {
