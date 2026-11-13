@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           org: membership.organizationName,
           role: 'eboard' as const,
         }));
-        const savedOrg = localStorage.getItem('currentOrg') ?? '';
+        const savedOrg = authenticatedUser.previewOrganization || localStorage.getItem('currentOrg') || '';
         const savedOrgIsValid =
           authenticatedUser.globalRole === 'ADMIN' ||
           organizations.some((membership) => membership.org === savedOrg);
@@ -92,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           organizations,
           currentOrg,
           isOSIAdmin: authenticatedUser.globalRole === 'ADMIN',
+          previewOrganization: authenticatedUser.previewOrganization,
         });
         setNeedsOrgSelection(!currentOrg);
       } catch (error) {
