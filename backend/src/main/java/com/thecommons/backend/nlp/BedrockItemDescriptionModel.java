@@ -66,7 +66,7 @@ public class BedrockItemDescriptionModel implements ItemDescriptionModel {
             return response.output().message().content().stream()
                     .filter(block -> block.text() != null).map(ContentBlock::text)
                     .reduce("", String::concat);
-        } catch (SdkException exception) {
+        } catch (SdkException | IllegalArgumentException exception) {
             // Do not log raw descriptions, provider responses, secrets or credential errors.
             throw NlpException.unavailable();
         }

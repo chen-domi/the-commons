@@ -36,6 +36,12 @@
             <artifactId>bedrockruntime</artifactId>
             <version>${aws-sdk.version}</version>
         </dependency>
+        <!-- Lets local AWS_PROFILE sessions created by `aws login` refresh normally. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>signin</artifactId>
+            <version>${aws-sdk.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
