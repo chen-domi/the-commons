@@ -1,0 +1,29 @@
+name: Deployment Tools CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/deployment-tools-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/deployment-tools-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check shell syntax
+        run: bash -n deploy/deploy-production.sh
+      - name: Test deployment status handling without cloud access
+        run: python3 -m unittest discover -s deploy/tests -v
