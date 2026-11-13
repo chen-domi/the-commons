@@ -54,7 +54,7 @@ function LandingScreen() {
   function handleGoogle() {
     clearAuthError();
     setGoogleLoading(true);
-    window.location.assign('http://localhost:8080/oauth2/authorization/google');
+    window.location.assign('/oauth2/authorization/google');
   }
 
   return (
