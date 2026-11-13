@@ -1,6 +1,6 @@
 // React Scripts can produce an undefined allowedHost when LAN detection fails.
 // Use an explicit loopback-only development server and retain host validation.
-process.env.HOST = '127.0.0.1';
+process.env.HOST = 'localhost';
 process.env.WDS_SOCKET_HOST = 'localhost';
 process.env.NODE_ENV = 'development';
 process.env.BABEL_ENV = 'development';
