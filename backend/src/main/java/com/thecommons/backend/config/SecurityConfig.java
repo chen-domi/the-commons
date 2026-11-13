@@ -1,6 +1,8 @@
 package com.thecommons.backend.config;
 
 import com.thecommons.backend.auth.BcOidcUserService;
+import com.thecommons.backend.auth.AdminPreviewSession;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +27,11 @@ public class SecurityConfig {
                                 "/api/auth/logout"))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/admin/organizations").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").access((authentication, context) ->
+                                new AuthorizationDecision((context.getRequest().getSession(false) == null
+                                        || context.getRequest().getSession(false).getAttribute(AdminPreviewSession.KEY) == null)
+                                        && authentication.get().getAuthorities().stream()
+                                        .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"))))
                         .requestMatchers(HttpMethod.POST, "/api/inventory", "/api/inventory/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/inventory/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/inventory/**").authenticated()

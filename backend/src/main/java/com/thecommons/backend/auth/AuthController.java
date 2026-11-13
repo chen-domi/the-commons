@@ -26,7 +26,8 @@ public class AuthController {
                 user.getFullName(),
                 user.getEmail(),
                 user.getPicture(),
-                appUser.getGlobalRole());
+                AdminPreviewSession.isEffectiveAdmin(appUser) ? GlobalRole.ADMIN : GlobalRole.USER,
+                AdminPreviewSession.organization(appUser));
     }
 
     @GetMapping("/csrf")
