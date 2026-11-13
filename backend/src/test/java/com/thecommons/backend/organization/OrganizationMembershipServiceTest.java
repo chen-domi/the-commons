@@ -10,6 +10,13 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.thecommons.backend.auth.AppUser;
+import com.thecommons.backend.auth.AdminPreviewSession;
+import com.thecommons.backend.auth.GlobalRole;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.security.access.AccessDeniedException;
 import com.thecommons.backend.auth.AppUserRepository;
 import com.thecommons.backend.auth.AuthenticatedUserNotFoundException;
 import java.util.List;
@@ -22,6 +29,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class OrganizationMembershipServiceTest {
+    @AfterEach void clearPreview() { RequestContextHolder.resetRequestAttributes(); }
+
+    @Test void previewReturnsVirtualMembershipWithoutSavingAndPreventsMembershipChanges() {
+        AppUser admin = new AppUser("admin", "admin@bc.edu", "Admin");
+        admin.changeGlobalRole(GlobalRole.ADMIN);
+        var organization = new Organization("4Boston", "hash");
+        when(appUserRepository.findByGoogleSubject("admin")).thenReturn(Optional.of(admin));
+        when(organizationService.getByName("4Boston")).thenReturn(organization);
+        var request = new MockHttpServletRequest();
+        request.getSession().setAttribute(AdminPreviewSession.KEY,
+                new AdminPreviewSession.Preview("admin", "4Boston"));
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        assertSame(organization, membershipService.getMemberships("admin").getFirst().getOrganization());
+        assertThrows(AccessDeniedException.class, () -> membershipService.joinOrganization("admin", "UGBC", "1234"));
+        assertThrows(AccessDeniedException.class, () -> membershipService.leaveOrganization("admin", "4Boston"));
+        verifyNoInteractions(membershipRepository);
+    }
 
     @Mock
     private AppUserRepository appUserRepository;

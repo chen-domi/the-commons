@@ -18,9 +18,34 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import com.thecommons.backend.auth.AdminPreviewSession;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.junit.jupiter.api.AfterEach;
 
 @ExtendWith(MockitoExtension.class)
 class OrganizationAuthorizationServiceTest {
+    @AfterEach
+    void clearRequest() { RequestContextHolder.resetRequestAttributes(); }
+
+    @Test
+    void previewRestrictsAdminToOneOrganizationEvenWithOtherMemberships() {
+        AppUser admin = new AppUser("admin", "admin@bc.edu", "Admin");
+        admin.changeGlobalRole(GlobalRole.ADMIN);
+        when(appUserRepository.findByGoogleSubject("admin")).thenReturn(Optional.of(admin));
+        var request = new MockHttpServletRequest();
+        request.getSession().setAttribute(AdminPreviewSession.KEY,
+                new AdminPreviewSession.Preview("admin", "4Boston"));
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        assertDoesNotThrow(() -> authorizationService.requireCanManage("admin", "4Boston"));
+        assertThrows(AccessDeniedException.class,
+                () -> authorizationService.requireCanManage("admin", "UGBC"));
+        request.getSession().removeAttribute(AdminPreviewSession.KEY);
+        assertDoesNotThrow(() -> authorizationService.requireCanManage("admin", "UGBC"));
+        org.junit.jupiter.api.Assertions.assertEquals(GlobalRole.ADMIN, admin.getGlobalRole());
+        verifyNoInteractions(membershipRepository);
+    }
 
     @Mock
     private AppUserRepository appUserRepository;
