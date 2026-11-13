@@ -32,3 +32,9 @@ jobs:
         working-directory: frontend
         env:
           GENERATE_SOURCEMAP: "false"
+
+      - name: Test frontend without watching
+        run: npm test -- --watchAll=false --runInBand
+        working-directory: frontend
+        env:
+          CI: "true"

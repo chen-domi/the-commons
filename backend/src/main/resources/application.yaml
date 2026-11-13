@@ -31,6 +31,10 @@ spring:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  nlp:
+    enabled: ${NLP_ENABLED:false}
+    region: ${BEDROCK_REGION:us-east-1}
+    model-id: ${BEDROCK_MODEL_ID:}
 
 server:
   forward-headers-strategy: framework
