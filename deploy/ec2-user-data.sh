@@ -21,5 +21,13 @@ curl --fail --location --silent --show-error \
 install -m 0755 /tmp/docker-compose-linux-aarch64 \
     /usr/local/lib/docker/cli-plugins/docker-compose
 
+curl --fail --location --silent --show-error \
+    https://github.com/docker/buildx/releases/download/v0.38.0/buildx-v0.38.0.linux-arm64 \
+    --output /tmp/docker-buildx-linux-arm64
+echo "38e890e1a162bfdbf32fbe91404991dc4fc28e55b0de901b34374a061bab4d2c  /tmp/docker-buildx-linux-arm64" \
+    | sha256sum --check -
+install -m 0755 /tmp/docker-buildx-linux-arm64 \
+    /usr/local/lib/docker/cli-plugins/docker-buildx
+
 mkdir -p /opt/the-commons
 chown ec2-user:ec2-user /opt/the-commons
