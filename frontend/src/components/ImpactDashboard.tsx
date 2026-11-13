@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Package, Bell, Zap, Lightbulb, Plus, ArrowLeftRight, CheckCircle2, Clock, QrCode, Settings, X, AlertCircle, Building2, ChevronDown } from 'lucide-react';
 import { BorrowingNotificationSummary, InventoryItem } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { getOrganizations, OrganizationSummary } from '../api/organizationApi';
+import { createOrganization, getOrganizations, OrganizationSummary } from '../api/organizationApi';
 import Combobox from './Combobox';
 
 interface ImpactDashboardProps {
@@ -163,9 +163,68 @@ function OrgManagerModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function CreateOrganizationModal({ onClose, onCreated }: {
+  onClose: () => void;
+  onCreated: (organization: OrganizationSummary) => void;
+}) {
+  const [name, setName] = useState('');
+  const [pin, setPin] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (saving || !name.trim() || !/^\d{4}$/.test(pin)) return;
+    setSaving(true);
+    setError('');
+    try {
+      onCreated(await createOrganization(name.trim(), pin));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create organization');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="create-org-title"
+        className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 id="create-org-title" className="text-lg font-bold text-gray-800">Create organization</h2>
+          <button type="button" onClick={onClose} disabled={saving} aria-label="Close"
+            className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-40"><X size={18} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="new-org-name" className="block text-sm font-semibold text-gray-600 mb-1">Organization name</label>
+            <input id="new-org-name" autoFocus required value={name} disabled={saving}
+              onChange={(event) => setName(event.target.value)} placeholder="Example: 4Boston"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2" />
+          </div>
+          <div>
+            <label htmlFor="new-org-pin" className="block text-sm font-semibold text-gray-600 mb-1">E-board PIN</label>
+            <input id="new-org-pin" type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4}
+              required value={pin} disabled={saving} autoComplete="new-password"
+              onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2" />
+            <p className="text-xs text-gray-500 mt-1">Choose 4 digits to share with this organization's e-board.</p>
+          </div>
+          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+          <button type="submit" disabled={saving || !name.trim() || pin.length !== 4}
+            className="w-full rounded-xl px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            style={{ backgroundColor: '#8B0000' }}>
+            {saving ? 'Creating…' : 'Create organization'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, onGoToBorrowing, onScanClick, notificationSummary }: ImpactDashboardProps) {
   const { user, switchOrg } = useAuth();
   const [showOrgManager, setShowOrgManager] = useState(false);
+  const [showCreateOrganization, setShowCreateOrganization] = useState(false);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(false);
   const [organizationsError, setOrganizationsError] = useState('');
@@ -252,6 +311,14 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
               </button>
             )}
           </div>
+          {isAdmin && (
+            <button type="button"
+              onClick={() => { setShowOrganizations(false); setShowCreateOrganization(true); }}
+              className="flex items-center gap-1.5 text-xs font-semibold mb-3 hover:underline"
+              style={{ color: '#8B0000' }}>
+              <Plus size={14} /> Create organization
+            </button>
+          )}
           {isAdmin && showOrganizations && (
             <div className="absolute z-20 left-5 right-5 top-16 rounded-xl border border-gray-200 bg-white shadow-lg p-2">
               {organizationsLoading ? (
@@ -371,6 +438,17 @@ export default function ImpactDashboard({ items, onAddItem, onGoToMarketplace, o
       )}
 
       {showOrgManager && <OrgManagerModal onClose={() => setShowOrgManager(false)} />}
+      {isAdmin && showCreateOrganization && (
+        <CreateOrganizationModal
+          onClose={() => setShowCreateOrganization(false)}
+          onCreated={(organization) => {
+            setOrganizations((current) => [...current, organization].sort((a, b) => a.name.localeCompare(b.name)));
+            setOrganizationsError('');
+            setShowCreateOrganization(false);
+            setShowOrganizations(true);
+          }}
+        />
+      )}
     </div>
   );
 }
